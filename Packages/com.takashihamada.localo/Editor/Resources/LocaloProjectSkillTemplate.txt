@@ -1,0 +1,39 @@
+---
+name: localo
+description: Maintain Localo localization data and integrations in Unity projects. Use for Localo translation tables, language settings, TextMesh Pro bindings, runtime language switching, editor tooling, migration, and troubleshooting.
+---
+
+# Localo
+
+Treat `Packages/com.takashihamada.localo/` as the installed tool and `Assets/LocaloAssets/` as project-owned translation data. Never edit a cached package under `Library/PackageCache`; make reusable tool changes in the Localo source repository.
+
+## Workflow
+
+1. Read `Packages/com.takashihamada.localo/README.md` and the project `AGENTS.md`, if present.
+2. Inspect `Assets/LocaloAssets/Resources/LocalizationSettings.asset`, registered tables, and affected scenes or prefabs before editing.
+3. Preserve existing keys, language columns, and table registrations unless the task explicitly changes them.
+4. Use Unity's asset and scene APIs for serialized Unity files. Respect unsaved human changes.
+
+## Data contract
+
+- Keep `LocalizationSettings.asset` at `Assets/LocaloAssets/Resources/LocalizationSettings.asset` unless the runtime loading contract changes too.
+- Keep English first in `enabledLanguages`; column order follows that list and visibility follows `visibleLanguages`.
+- Register every runtime table in `registeredTables`, and keep keys unique across all registered tables.
+- Resolution is requested language, then English. Missing keys return the key; an explicitly blank base translation stays blank.
+- Store intentional line breaks as `<br>`.
+
+## Runtime integration
+
+- Bind Canvas TMP text with `LocalizeTextMeshProUGUI` and 3D TMP text with `LocalizeTextMeshPro`.
+- Do not place `LocaloManager` manually; it bootstraps before the first scene.
+- Switch language with `LocaloManager.Instance.SetLanguage(...)` and fetch dynamic text with `GetLocalizedString(...)`.
+- Keep platform-specific language adapters in the consuming project. The public package boundary is `LocaloManager.SetSystemLanguageProvider(...)`.
+- Never copy proprietary SDK code, vendor binaries, private package sources, credentials, or machine-specific absolute paths into the public Localo package.
+
+## Verification
+
+1. Compile with the Unity workflow documented by the project and confirm zero errors.
+2. Verify registered tables, enabled language columns, and unique keys after data edits.
+3. In Play Mode, switch languages at least twice and confirm bound and dynamic text updates.
+4. Confirm Console errors are zero, then stop Play Mode.
+5. Hand visual quality and interactive feel checks to a human with specific items to inspect.

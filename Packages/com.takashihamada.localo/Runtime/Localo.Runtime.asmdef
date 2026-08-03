@@ -1,0 +1,8 @@
+{
+  "name": "Localo.Runtime",
+  "rootNamespace": "Localo.Runtime",
+  "references": [
+    "Unity.TextMeshPro"
+  ],
+  "autoReferenced": true
+}

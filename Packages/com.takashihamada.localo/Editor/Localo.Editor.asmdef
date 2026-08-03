@@ -1,0 +1,11 @@
+{
+  "name": "Localo.Editor",
+  "rootNamespace": "Localo.Editor",
+  "references": [
+    "Localo.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true
+}

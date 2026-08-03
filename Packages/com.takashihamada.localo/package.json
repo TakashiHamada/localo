@@ -1,0 +1,28 @@
+{
+  "name": "com.takashihamada.localo",
+  "displayName": "Localo",
+  "version": "0.1.0",
+  "unity": "6000.3",
+  "description": "A lightweight ScriptableObject-based localization editor and runtime for TextMesh Pro.",
+  "license": "MIT",
+  "documentationUrl": "https://github.com/TakashiHamada/localo#readme",
+  "changelogUrl": "https://github.com/TakashiHamada/localo/blob/main/Packages/com.takashihamada.localo/CHANGELOG.md",
+  "licensesUrl": "https://github.com/TakashiHamada/localo/blob/main/LICENSE",
+  "dependencies": {
+    "com.unity.ugui": "2.0.0"
+  },
+  "keywords": [
+    "localization",
+    "translation",
+    "textmeshpro",
+    "editor"
+  ],
+  "author": {
+    "name": "Takashi Hamada",
+    "url": "https://github.com/TakashiHamada"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TakashiHamada/localo.git"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Localo.Tests.Editor",
+  "rootNamespace": "Localo.Tests",
+  "references": [
+    "Localo.Runtime",
+    "Localo.Editor",
+    "Unity.TextMeshPro"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "autoReferenced": false
+}

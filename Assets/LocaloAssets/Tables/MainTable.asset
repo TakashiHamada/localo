@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 970f91116090b4200b59a79004f421e0, type: 3}
+  m_Name: MainTable
+  m_EditorClassIdentifier: Localo.Runtime::Localo.Runtime.LocalizationTable
+  rows:
+  - key: SAMPLE_TITLE
+    translations:
+    - language: 10
+      text: Localo Localization Sample
+    - language: 22
+      text: "Localo \u30ED\u30FC\u30AB\u30E9\u30A4\u30BA\u30B5\u30F3\u30D7\u30EB"
+    comment: Localo development sample
+  - key: SAMPLE_GREETING
+    translations:
+    - language: 10
+      text: Hello from Localo!
+    - language: 22
+      text: "Localo\u304B\u3089\u3053\u3093\u306B\u3061\u306F\uFF01"
+    comment: Localo development sample
+  - key: SAMPLE_3D_TEXT
+    translations:
+    - language: 10
+      text: This is 3D TextMesh Pro
+    - language: 22
+      text: "\u3053\u308C\u306F3D TextMesh Pro\u3067\u3059"
+    comment: Localo development sample
+  - key: SAMPLE_FALLBACK
+    translations:
+    - language: 10
+      text: This line falls back to English.
+    - language: 22
+      text: 
+    comment: Localo development sample
+  - key: SAMPLE_CURRENT_LANGUAGE
+    translations:
+    - language: 10
+      text: 'Current language: {0}'
+    - language: 22
+      text: "\u73FE\u5728\u306E\u8A00\u8A9E: {0}"
+    comment: Localo development sample

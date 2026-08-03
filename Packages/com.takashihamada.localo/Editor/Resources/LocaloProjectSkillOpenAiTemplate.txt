@@ -1,0 +1,6 @@
+interface:
+  display_name: "Localo"
+  short_description: "Maintain Localo localization in Unity projects"
+  default_prompt: "Use $localo to implement or verify Localo localization work in this Unity project."
+policy:
+  allow_implicit_invocation: true
