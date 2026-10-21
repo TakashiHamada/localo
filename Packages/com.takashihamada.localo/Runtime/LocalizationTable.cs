@@ -6,7 +6,8 @@ using UnityEngine.Serialization;
 namespace Localo.Runtime
 {
     /// <summary>
-    /// Translation data table, typically split per screen or category.
+    /// Translation data table (shown as a "sheet" in the editor). A sheet is one kind of text in one voice
+    /// (speaker and tone): split sheets when the speaker or the base tone changes, not per screen.
     /// Holds per-language text and a comment for each translation key (<see cref="LocalizationRow.key"/>).
     /// </summary>
     [CreateAssetMenu(fileName = "LocalizationTable", menuName = "Localo/Localo Table")]
@@ -118,6 +119,7 @@ namespace Localo.Runtime
         public string comment = string.Empty;
 
         [Tooltip("AIが調査した場面。どこで、何がきっかけで、誰に向けて表示されるかを、根拠とともに記録します。")]
+        // 開発中に aiResearch として保存したデータ（MainTable.asset など）を読み込むために残している。
         [FormerlySerializedAs("aiResearch")]
         [TextArea(4, 16)]
         public string aiScene = string.Empty;
@@ -137,6 +139,5 @@ namespace Localo.Runtime
 
         [TextArea(1, 4)]
         public string text;
-
     }
 }

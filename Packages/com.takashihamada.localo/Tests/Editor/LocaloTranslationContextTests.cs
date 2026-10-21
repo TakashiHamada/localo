@@ -50,7 +50,7 @@ namespace Localo.Tests
         }
 
         [Test]
-        public void ExportRow_ContainsSharedKnowledgeAndSeparateHumanAndResearchContext()
+        public void ExportRow_ContainsSharedKnowledgeAndSeparateHumanCommentAndRowContext()
         {
             _table.rows.Add(new LocalizationRow { key = "OTHER" });
             var exported = JsonUtility.FromJson<ProjectExport>(

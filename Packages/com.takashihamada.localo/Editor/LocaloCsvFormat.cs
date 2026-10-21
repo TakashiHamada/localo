@@ -26,7 +26,7 @@ namespace Localo.Editor
             var records = new List<List<string>>();
             if (string.IsNullOrEmpty(csvText)) return records;
 
-            int index = csvText[0] == '﻿' ? 1 : 0;
+            int index = csvText[0] == '\uFEFF' ? 1 : 0;
             int line = 1;
             var record = new List<string>();
             var field = new StringBuilder();

@@ -4,15 +4,22 @@ All notable changes to Localo are documented in this file.
 
 ## [Unreleased]
 
-- The Guide tab was replaced by a `?` button at the right end of the toolbar, which opens the guide in a separate Localo Guide window.
-- The glossary moved from the Translation tab to its own Glossary tab. Tab order: Setup, Table, Translation, Glossary.
-- Two-level translation context: each sheet has a Text Type (selected in the Translation tab) alongside its guidelines, and each row has AI-researched Scene (`aiScene`) and Display Space (`aiDisplaySpace`) fields. Legacy `aiResearch` data loads into `aiScene`.
-- The Localo Details window now shows only the Scene and Display Space fields; the row-level Copy Row Context as JSON button was removed (use `ExportRowToString` or Copy All Context as JSON).
-- `LocaloTranslationContext.SetRowContext` saves a row's scene and display space; `SetResearch` is now obsolete. Context JSON schema version 3.
-- The project skill template adds a step-by-step procedure for researching a key's scene and display space.
-- CSV export / import API for translator review workflows (`Localo.Editor.LocaloCsv`), with dry run, per-column filters, baseline-based conflict detection, and batch-mode entry points.
+### Added
 
-## [0.1.0] - Unreleased
+- CSV export / import API for translator review workflows (`Localo.Editor.LocaloCsv`), with dry run, per-column filters, baseline-based conflict detection, and batch-mode entry points (`LocaloCsvCommandLine`).
+- Translation tab: per sheet, a Text Type, free-form Translation Guidelines (speaker, personality, tone), and a Translator Lock. Locked language columns show `■` in the Table tab; CSV import rejects any change to them unless a human sets `AllowTranslatorCellChanges` (`-localoAllowTranslatorChanges` in batch mode).
+- Glossary tab for project-wide terms, their official spelling per language, and notes.
+- Per-row AI-researched Scene (`aiScene`) and Display Space (`aiDisplaySpace`). The details icon right of `Comment` in the Table tab opens them in the Localo Details window; it is reachable with `h`/`l` and opens with `Enter` or `i`.
+- `LocaloTranslationContext`: `ExportToString` / `ExportRowToString` write the context JSON for AI translation (schema version 3), and `SetRowContext` saves a row's scene and display space.
+- The project AI skill template describes the translation context, the Translator Lock, and how to research a key's scene and display space.
+
+### Changed
+
+- The Guide tab is now the Localo Guide window, opened with the `?` button at the right end of the toolbar.
+- The editor window loads the settings from the fixed path `Assets/LocaloAssets/Resources/LocalizationSettings.asset`, and remembers the selected table per project. The previously selected table is forgotten once after updating.
+- Editor help texts and dialogs are in Japanese.
+
+## [0.1.0] - 2026-08-03
 
 - Initial public UPM package.
 - ScriptableObject translation settings and tables.

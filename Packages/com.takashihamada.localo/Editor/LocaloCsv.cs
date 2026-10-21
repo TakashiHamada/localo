@@ -151,7 +151,7 @@ namespace Localo.Editor
         /// </summary>
         public static string ExportToString(LocalizationSettings settings = null)
         {
-            settings = ResolveSettings(settings);
+            settings = LocaloEditorSettings.Resolve(settings);
             List<SystemLanguage> languages = settings.enabledLanguages ?? new List<SystemLanguage>();
 
             var records = new List<IReadOnlyList<string>>();
@@ -160,7 +160,7 @@ namespace Localo.Editor
             header.Add(CommentColumn);
             records.Add(header);
 
-            foreach (LocalizationTable table in RegisteredTables(settings))
+            foreach (LocalizationTable table in LocaloEditorSettings.RegisteredTables(settings))
             {
                 if (table.rows == null) continue;
                 foreach (LocalizationRow row in table.rows)
@@ -183,13 +183,13 @@ namespace Localo.Editor
         {
             if (string.IsNullOrEmpty(path)) throw new ArgumentException("CSV path is required.", nameof(path));
 
-            settings = ResolveSettings(settings);
+            settings = LocaloEditorSettings.Resolve(settings);
             string csv = ExportToString(settings);
             string directory = Path.GetDirectoryName(Path.GetFullPath(path));
             if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
             File.WriteAllText(path, csv, new UTF8Encoding(true));
 
-            List<LocalizationTable> tables = RegisteredTables(settings).ToList();
+            List<LocalizationTable> tables = LocaloEditorSettings.RegisteredTables(settings).ToList();
             int rowCount = tables.Sum(table => table.rows?.Count(row => row != null) ?? 0);
             string languages = string.Join(", ",
                 (settings.enabledLanguages ?? new List<SystemLanguage>()).Select(LocalizationLanguages.GetDisplayName));
@@ -206,6 +206,7 @@ namespace Localo.Editor
         {
             if (string.IsNullOrEmpty(path)) throw new ArgumentException("CSV path is required.", nameof(path));
 
+            // 見つからないファイルとUTF-8でないファイルは例外にせず、baseline と同じくレポートのエラーとして返す。
             if (!TryReadUtf8(path, "CSV", out string csvText, out string error))
             {
                 var report = new LocaloCsvReport { DryRun = options?.DryRun ?? false };
@@ -227,7 +228,7 @@ namespace Localo.Editor
             options ??= new LocaloCsvImportOptions();
             var report = new LocaloCsvReport { DryRun = options.DryRun };
 
-            settings = settings != null ? settings : LoadProjectSettings();
+            settings = settings != null ? settings : LocaloEditorSettings.Load();
             if (settings == null)
             {
                 report.Errors.Add($"LocalizationSettings not found at Resources/{LocaloDatabase.SettingsResourcesPath}.");
@@ -247,7 +248,6 @@ namespace Localo.Editor
             {
                 return report;
             }
-            if (!report.Success) return report;
 
             var plan = new ImportPlan();
             var seenKeys = new HashSet<string>(StringComparer.Ordinal);
@@ -267,7 +267,12 @@ namespace Localo.Editor
                 string key = record[layout.KeyIndex].Trim();
                 if (key.Length == 0)
                 {
-                    report.Errors.Add($"{rowLabel}: Key is empty.");
+                    // キー未入力の空行は書き出しにも含まれるので、往復で止まらないよう読み飛ばす。
+                    // 文章やコメントが入っている行は、どの行に当てるか決められないのでエラーにする。
+                    if (HasOnlyTableValue(record, layout))
+                        report.Warnings.Add($"{rowLabel}: skipped a row with an empty key and no text.");
+                    else
+                        report.Errors.Add($"{rowLabel}: Key is empty.");
                     continue;
                 }
                 if (!seenKeys.Add(key))
@@ -326,16 +331,19 @@ namespace Localo.Editor
                     string columnName = LocalizationLanguages.GetDisplayName(language);
                     string baselineValue = null;
                     baselineRow?.Languages.TryGetValue(language, out baselineValue);
-                    if (!TryResolveIncoming(record[index], current, baselineValue, isNewRow, table, key, columnName,
-                            report, out string incoming))
+
+                    // Translator Lock の列は baseline との競合判定より先に調べる。
+                    // 競合扱いにすると取り込みが続行され、保護違反として検知できないため。
+                    if (!options.AllowTranslatorCellChanges && table.IsTranslatorLanguage(language))
                     {
+                        if (IsLockedCellChanged(record[index], current, baselineValue, isNewRow))
+                            report.Errors.Add($"[{table.name}] {key} | {columnName}: the column is translator-locked.");
                         continue;
                     }
 
-                    if (!options.AllowTranslatorCellChanges &&
-                        table.IsTranslatorLanguage(language))
+                    if (!TryResolveIncoming(record[index], current, baselineValue, isNewRow, table, key, columnName,
+                            report, out string incoming))
                     {
-                        report.Errors.Add($"[{table.name}] {key} | {columnName}: translator-managed language column is protected.");
                         continue;
                     }
 
@@ -389,38 +397,18 @@ namespace Localo.Editor
             return false;
         }
 
-        private static LocalizationSettings ResolveSettings(LocalizationSettings settings)
-        {
-            if (settings != null) return settings;
-            settings = LoadProjectSettings();
-            if (settings == null)
-            {
-                throw new InvalidOperationException(
-                    $"LocalizationSettings not found at Resources/{LocaloDatabase.SettingsResourcesPath}.");
-            }
-            return settings;
-        }
-
-        private static LocalizationSettings LoadProjectSettings()
-        {
-            return Resources.Load<LocalizationSettings>(LocaloDatabase.SettingsResourcesPath);
-        }
-
-        private static IEnumerable<LocalizationTable> RegisteredTables(LocalizationSettings settings)
-        {
-            if (settings.registeredTables == null) yield break;
-            foreach (TableInfo info in settings.registeredTables)
-            {
-                if (info.tableAsset != null) yield return info.tableAsset;
-            }
-        }
-
         /// <summary>
         /// Reads a file as strict UTF-8 so that a spreadsheet saved in a legacy encoding (e.g. Shift_JIS)
         /// is rejected instead of being imported as replacement characters.
         /// </summary>
         private static bool TryReadUtf8(string path, string label, out string text, out string error)
         {
+            if (!File.Exists(path))
+            {
+                text = null;
+                error = $"{label} not found: {path}";
+                return false;
+            }
             try
             {
                 text = File.ReadAllText(path, new UTF8Encoding(false, true));
@@ -481,7 +469,7 @@ namespace Localo.Editor
             tablesByName = new Dictionary<string, LocalizationTable>(StringComparer.Ordinal);
             rowsByKey = new Dictionary<string, (LocalizationTable, LocalizationRow)>(StringComparer.Ordinal);
 
-            foreach (LocalizationTable table in RegisteredTables(settings))
+            foreach (LocalizationTable table in LocaloEditorSettings.RegisteredTables(settings))
             {
                 if (tablesByName.TryGetValue(table.name, out LocalizationTable other) && other != table)
                 {
@@ -494,6 +482,13 @@ namespace Localo.Editor
                 foreach (LocalizationRow row in table.rows)
                 {
                     if (row == null || string.IsNullOrEmpty(row.key)) continue;
+                    // CSV 側のキーは Trim して照合するので、前後に空白のあるキーは往復で一致しない。
+                    if (row.key != row.key.Trim())
+                    {
+                        report.Errors.Add($"Key \"{row.key}\" in \"{table.name}\" has leading or trailing whitespace; " +
+                                          "fix the key in the Table tab before importing.");
+                        continue;
+                    }
                     if (rowsByKey.TryGetValue(row.key, out (LocalizationTable Table, LocalizationRow Row) existing))
                     {
                         report.Errors.Add($"Key \"{row.key}\" exists in both \"{existing.Table.name}\" and " +
@@ -513,11 +508,6 @@ namespace Localo.Editor
             string baselineText = options.BaselineCsvText;
             if (baselineText == null && !string.IsNullOrEmpty(options.BaselineCsvPath))
             {
-                if (!File.Exists(options.BaselineCsvPath))
-                {
-                    report.Errors.Add($"Baseline CSV not found: {options.BaselineCsvPath}");
-                    return result;
-                }
                 if (!TryReadUtf8(options.BaselineCsvPath, "Baseline CSV", out baselineText, out string error))
                 {
                     report.Errors.Add(error);
@@ -573,6 +563,27 @@ namespace Localo.Editor
                 }
             }
             return incoming != current;
+        }
+
+        /// <summary>
+        /// Translator Lock の列で、取り込みが値を変えようとしているかを返す。
+        /// baseline があり、レビュー担当がその列に触れていなければ（incoming == baseline）変更とみなさない。
+        /// </summary>
+        private static bool IsLockedCellChanged(string incoming, string current, string baselineValue, bool isNewRow)
+        {
+            if (!isNewRow && baselineValue != null && incoming == baselineValue) return false;
+            return incoming != current;
+        }
+
+        /// <summary>Table 列以外がすべて空のレコードか（キー未入力の空行を書き出したもの）。</summary>
+        private static bool HasOnlyTableValue(List<string> record, CsvLayout layout)
+        {
+            for (int i = 0; i < record.Count; i++)
+            {
+                if (i == layout.TableIndex) continue;
+                if (!string.IsNullOrWhiteSpace(record[i])) return false;
+            }
+            return true;
         }
 
         private static string ResolveReferenceEnglish(LocalizationTable table, LocalizationRow row, bool isNewRow,
@@ -688,6 +699,8 @@ namespace Localo.Editor
                 var layout = new CsvLayout { ColumnCount = header.Count };
                 int errorCount = errors.Count;
                 var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                // 表示名と enum 名（"Chinese (Traditional)" と "ChineseTraditional"）は見出しが違っても同じ言語になる。
+                var seenLanguages = new HashSet<SystemLanguage>();
 
                 for (int i = 0; i < header.Count; i++)
                 {
@@ -706,6 +719,12 @@ namespace Localo.Editor
                         if (settings.enabledLanguages == null || !settings.enabledLanguages.Contains(language))
                         {
                             errors.Add($"{label}: language column \"{name}\" is not enabled in LocalizationSettings.");
+                            continue;
+                        }
+                        if (!seenLanguages.Add(language))
+                        {
+                            errors.Add($"{label}: column \"{name}\" duplicates the " +
+                                       $"{LocalizationLanguages.GetDisplayName(language)} column.");
                             continue;
                         }
                         layout.LanguageColumns.Add((i, language));

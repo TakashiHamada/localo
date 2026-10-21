@@ -67,6 +67,15 @@ Keep platform SDK code in the consuming project. Localo itself only depends on U
 - Duplicate keys log a warning; the first registered table wins.
 - Store intentional line breaks as `<br>`.
 
+## Editor tabs
+
+The **Window > Localo** window has four tabs. The `?` button at the right end of the toolbar opens the Localo Guide window with all shortcuts.
+
+- **Setup**: create the settings, register tables (sheets), choose languages and column widths, install the AI project skill.
+- **Table**: edit keys, translations and the human `Comment` in a keyboard-first grid. The icon right of `Comment` (the details icon) opens the row's AI-researched Scene and Display Space.
+- **Translation**: per sheet, choose the Text Type, write the Translation Guidelines (speaker, personality, tone), and set the **Translator Lock**. Locked language columns are shown with `■` in the Table tab and are never changed by AI. **Copy All Context as JSON** copies the context for AI translation (`Localo.Editor.LocaloTranslationContext`).
+- **Glossary**: project-wide terms with their official spelling per language and notes.
+
 ## Table shortcuts
 
 | Keys | Action |
@@ -75,6 +84,8 @@ Keep platform SDK code in the consuming project. Localo itself only depends on U
 | `Shift` + movement | Extend selection |
 | `i` or double-click | Edit a cell |
 | `Enter` or `Esc` | Commit editing |
+| `Enter` or `i` on the details icon | Open the row's Scene and Display Space |
+| `Esc` `Esc` | Clear the search filter |
 | `x`, `Delete`, `Backspace` | Clear selected cells |
 | `o` | Insert a row below |
 | `d` `d` | Delete a row |
@@ -133,6 +144,10 @@ report = LocaloCsv.ImportFromFile("Localization/review-done.csv", options);
 | Unknown or disabled column, duplicate key, malformed CSV | Error |
 | Baseline given, reviewer left the cell as exported | Skipped, so edits made after the export are kept |
 | Baseline given, both the table and the reviewer changed the cell | Conflict: reported and left unchanged |
+| A Translator Lock column would change | Error, unless `AllowTranslatorCellChanges = true` (humans only) |
+| Empty `Key` with no text (an unfinished row in the table) | Skipped with a warning |
+| Empty `Key` with text, same language under two headers, or a table key with leading/trailing spaces | Error |
+| CSV file not found or not UTF-8 | Error |
 
 Any error aborts the whole import before anything is written. Warnings flag cleared text, raw line breaks, and placeholders (`{0}`) that differ from the current English text, which usually means the CSV is older than the code.
 
@@ -145,7 +160,7 @@ Unity -batchmode -quit -projectPath <project> -executeMethod Localo.Editor.Local
 Unity -batchmode -quit -projectPath <project> -executeMethod Localo.Editor.LocaloCsvCommandLine.Import -localoCsv review-done.csv -localoBaselineCsv review.csv -localoDryRun
 ```
 
-Import flags: `-localoDryRun`, `-localoLanguages Japanese,Korean`, `-localoNoComments`, `-localoAddMissingKeys`, `-localoBaselineCsv <path>`. The process exits with code 1 when the import reports errors.
+Import flags: `-localoDryRun`, `-localoLanguages Japanese,Korean`, `-localoNoComments`, `-localoAddMissingKeys`, `-localoBaselineCsv <path>`, `-localoAllowTranslatorChanges` (humans only; same as `AllowTranslatorCellChanges`). The process exits with code 1 when the import reports errors.
 
 ## AI project skill
 

@@ -108,7 +108,7 @@ namespace Localo.Tests
                 new LocaloCsvImportOptions { DryRun = dryRun, AddMissingKeys = true }, _settings);
 
             Assert.That(report.Success, Is.False);
-            Assert.That(report.Errors, Has.Some.Contains("translator-managed language column is protected"));
+            Assert.That(report.Errors, Has.Some.Contains("the column is translator-locked"));
             Assert.That(report.Applied, Is.False);
             Assert.That(GetText(_main, "TITLE", SystemLanguage.Japanese), Is.EqualTo("タイトル"));
             Assert.That(GetText(_main, "TITLE", SystemLanguage.English), Is.EqualTo("Title"));
@@ -286,6 +286,96 @@ namespace Localo.Tests
             Assert.That(LocaloCsv.TryParseLanguage("chinesesimplified", out SystemLanguage enumName), Is.True);
             Assert.That(enumName, Is.EqualTo(SystemLanguage.ChineseSimplified));
             Assert.That(LocaloCsv.TryParseLanguage("Klingon", out _), Is.False);
+        }
+
+        [Test]
+        public void RoundTrip_RowWithEmptyKeyAndNoText_IsSkippedWithWarning()
+        {
+            _main.rows.Add(new LocalizationRow { key = string.Empty });
+            string csv = LocaloCsv.ExportToString(_settings);
+
+            LocaloCsvReport report = LocaloCsv.ImportFromString(csv, null, _settings);
+
+            Assert.That(report.Success, Is.True, report.ToString());
+            Assert.That(report.Warnings, Has.Some.Contains("empty key"));
+            Assert.That(report.Changes, Is.Empty, report.ToString());
+        }
+
+        [Test]
+        public void Import_RowWithEmptyKeyAndText_Fails()
+        {
+            AssertFails("Table,Key,English\nMainTable,,Orphan text\n", "Key is empty");
+        }
+
+        [Test]
+        public void Import_SameLanguageUnderTwoHeaderNames_Fails()
+        {
+            AssertFails("Key,Chinese (Traditional),ChineseTraditional\nTITLE,a,b\n", "duplicates the Chinese (Traditional) column");
+        }
+
+        [Test]
+        public void ImportAndExport_TableRegisteredTwice_IsHandledOnce()
+        {
+            _settings.registeredTables.Add(new TableInfo { tableAsset = _main });
+
+            List<List<string>> records = LocaloCsvFormat.Parse(LocaloCsv.ExportToString(_settings));
+            LocaloCsvReport report = LocaloCsv.ImportFromString("Key,Japanese\nTITLE,タイトル画面\n", null, _settings);
+
+            Assert.That(records, Has.Count.EqualTo(4));
+            Assert.That(report.Success, Is.True, report.ToString());
+            Assert.That(GetText(_main, "TITLE", SystemLanguage.Japanese), Is.EqualTo("タイトル画面"));
+        }
+
+        [Test]
+        public void Import_TranslatorColumnChangedAgainstBaseline_FailsInsteadOfConflict()
+        {
+            _main.translatorLanguages.Add(SystemLanguage.Japanese);
+            string baseline = LocaloCsv.ExportToString(_settings);
+            // エクスポート後に翻訳者がTableで訳を直し、レビュー担当も同じセルを書き換えた。
+            _main.SetText(FindRow(_main, "TITLE"), SystemLanguage.Japanese, "タイトル（翻訳者）");
+            string reviewed = baseline.Replace("タイトル", "タイトル（AI）");
+
+            LocaloCsvReport report = LocaloCsv.ImportFromString(reviewed,
+                new LocaloCsvImportOptions { BaselineCsvText = baseline }, _settings);
+
+            Assert.That(report.Success, Is.False, report.ToString());
+            Assert.That(report.Errors, Has.Some.Contains("translator-locked"));
+            Assert.That(report.Conflicts, Is.Empty);
+            Assert.That(GetText(_main, "TITLE", SystemLanguage.Japanese), Is.EqualTo("タイトル（翻訳者）"));
+        }
+
+        [Test]
+        public void Import_TranslatorColumnUntouchedByReviewer_IsNotAnError()
+        {
+            _main.translatorLanguages.Add(SystemLanguage.Japanese);
+            string baseline = LocaloCsv.ExportToString(_settings);
+            _main.SetText(FindRow(_main, "TITLE"), SystemLanguage.Japanese, "タイトル（翻訳者）");
+
+            LocaloCsvReport report = LocaloCsv.ImportFromString(baseline,
+                new LocaloCsvImportOptions { BaselineCsvText = baseline }, _settings);
+
+            Assert.That(report.Success, Is.True, report.ToString());
+            Assert.That(GetText(_main, "TITLE", SystemLanguage.Japanese), Is.EqualTo("タイトル（翻訳者）"));
+        }
+
+        [Test]
+        public void ImportFromFile_MissingFile_ReportsErrorInsteadOfThrowing()
+        {
+            string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "localo-csv-missing.csv");
+            System.IO.File.Delete(path);
+
+            LocaloCsvReport report = LocaloCsv.ImportFromFile(path, null, _settings);
+
+            Assert.That(report.Success, Is.False);
+            Assert.That(report.Errors, Has.Some.Contains("not found"));
+        }
+
+        [Test]
+        public void Import_TableKeyWithSurroundingWhitespace_Fails()
+        {
+            FindRow(_main, "TITLE").key = "TITLE ";
+
+            AssertFails("Key,Japanese\nSCORE,x\n", "leading or trailing whitespace");
         }
 
         private void AssertFails(string csv, string expectedError)

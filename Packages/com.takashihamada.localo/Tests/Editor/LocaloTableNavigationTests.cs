@@ -40,7 +40,7 @@ namespace Localo.Tests
         [Test]
         public void MoveSelection_ReachesDetailsFromComment_RequestsScroll_AndStopsAtDetails()
         {
-            int detailsColumn = (int)Call("GetEditableColumnCount");
+            int detailsColumn = (int)Call("GetDetailsColumnIndex");
             SetField("_selectedCol", detailsColumn - 1);
 
             Call("MoveSelection", 0, 1, false);
@@ -58,7 +58,7 @@ namespace Localo.Tests
         [Test]
         public void DetailsColumn_DoesNotReadOrOverwriteHumanComment()
         {
-            int detailsColumn = (int)Call("GetEditableColumnCount");
+            int detailsColumn = (int)Call("GetDetailsColumnIndex");
 
             Assert.That(Call("ReadCellValue", 0, detailsColumn), Is.EqualTo(string.Empty));
             Call("WriteCellValue", 0, detailsColumn, "replacement");
@@ -71,7 +71,7 @@ namespace Localo.Tests
         [Test]
         public void CopySelection_ExcludesDetailsColumn()
         {
-            int detailsColumn = (int)Call("GetEditableColumnCount");
+            int detailsColumn = (int)Call("GetDetailsColumnIndex");
             SetField("_selectionAnchorCol", detailsColumn - 1);
             SetField("_selectedCol", detailsColumn);
 
@@ -83,7 +83,7 @@ namespace Localo.Tests
         [Test]
         public void DetailsOnlySelection_IgnoresCopyPasteAndClear_WithoutAddingRows()
         {
-            int detailsColumn = (int)Call("GetEditableColumnCount");
+            int detailsColumn = (int)Call("GetDetailsColumnIndex");
             SetField("_selectionAnchorCol", detailsColumn);
             SetField("_selectedCol", detailsColumn);
             EditorGUIUtility.systemCopyBuffer = "first\nsecond";

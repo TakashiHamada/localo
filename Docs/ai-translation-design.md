@@ -50,7 +50,7 @@
 - Translationタブで対象シートを選び、Translator Lockで翻訳者担当の言語にチェックする。`LocalizationTable.translatorLanguages` のリストに保存し、指定された言語の列全体をAIの変更から保護する。空欄や今後追加する行も対象。シートの全言語を保護したければ全言語にチェックする。
 - Tableは対象セルに `■` を付ける。人間はTableで文章を修正でき、設定のチェックを外して保護を解除できる。AIは設定解除やアセット直接編集による回避をしない。
 - CSV取り込みは既定で、保護対象の変更をerrorにして取り込み全体を中止する。変更されていない訳はerrorにしない。翻訳者の納品CSVや確定訳の修正を人間が意図して取り込む場合に限り、`AllowTranslatorCellChanges = true`／`-localoAllowTranslatorChanges` を使える。設定は維持する。AIはこの指定を使わない。
-- コンテキストJSONの各シートに `translatorLanguages` を含める。`translatorExamples` には全シートから翻訳者担当の入力済みの訳がある行を、シートの方針・各言語の文章・人間のコメント・AI調査結果とともに収録する。行単位の書き出しでも全シートのお手本を渡す。スキーマはversion 2。
+- コンテキストJSONの各シートに `translatorLanguages` を含める。`translatorExamples` には全シートから翻訳者担当の入力済みの訳がある行を、シートの方針・各言語の文章・人間のコメント・AI調査結果とともに収録する。行単位の書き出しでも全シートのお手本を渡す。（この時点のスキーマはversion 2。現行はversion 3。）
 - AIは同じ言語・近い文脈の翻訳者の訳を、用語・言い回し・口調のお手本として優先的に参照する。他の言語の訳は参考例として区別し、話者やシートの違いに注意する。用語集や人間の指示と矛盾したら報告し、確定訳を勝手に修正しない。
 - 初期実装は保護設定・表示・CSVの保護・コンテキストとお手本の書き出しまで。自動翻訳や差分検出は未実装。
 
@@ -60,18 +60,18 @@
 
 以下は設計レビューで決まったルールであり、本文にあるコメント欄の扱いより優先する。
 
-画面の初期実装として、TableとGuideの間に「Translation」タブを追加した。シートの性格付けは `translationInstructions` の自由文とし、文章の種類・話者・性格・口調を個別の必須項目にはしない。話者や基本の口調が変わる場合はシートを分け、一時的な違いは人間のコメントで補足できる。全シート共通の用語集は `LocalizationSettings.glossary` で管理する。この方針を、本文のText Type・話者列・キャラクター設定の専用画面に関する旧案より優先する。
+画面の初期実装として、Tableの右に「Translation」タブを追加した。シートの性格付けは `translationInstructions` の自由文とし、文章の種類・話者・性格・口調を個別の必須項目にはしない。話者や基本の口調が変わる場合はシートを分け、一時的な違いは人間のコメントで補足できる。全シート共通の用語集は `LocalizationSettings.glossary` で管理する。この方針を、本文のText Type・話者列・キャラクター設定の専用画面に関する旧案より優先する。
 
 その後、用語集はTranslationタブから独立した「Glossary」タブへ移した。Guideはタブをやめ、ツールバー右端の「?」ボタンで開く別ウィンドウ（Localo Guide）にした。タブは `Setup → Table → Translation → Glossary` の順に並ぶ。
 
-各行の `aiResearch` と、Commentの右にあるメモアイコンも実装した。アイコン列には見出しを表示しない。`LocaloTranslationContext` のEditor APIと画面のJSONコピーボタンで、方針・用語集・コメント・調査結果をまとめて読み出せる。`SetResearch` は調査結果だけを更新する。自動調査や翻訳ジョブの取り込み・差分検出・Validatorの拡張は、この画面の初期実装には含まない。
+各行の調査結果の欄と、Commentの右にある詳細アイコンも実装した（当初は `aiResearch` 1欄。現行は冒頭の決定どおり `aiScene` と `aiDisplaySpace` の2欄で、保存APIは `SetRowContext`）。アイコン列には見出しを表示しない。`LocaloTranslationContext` のEditor APIと画面のJSONコピーボタンで、方針・用語集・コメント・場面・器をまとめて読み出せる。自動調査や翻訳ジョブの取り込み・差分検出・Validatorの拡張は、この画面の初期実装には含まない。
 
 UIのボタン・タブ・項目名・見出しは英語、ツールチップ・補足説明・ダイアログ本文・Guideウィンドウの説明文は日本語に統一する。翻訳データと人間のコメントには、この表示言語のルールを適用しない。
 ツール側の説明は、入力する情報の役割や操作方法を汎用的に記述し、特定の作品・キャラクター・世界設定・操作機器を前提とする具体例は入れない。
 
 - **コメント欄（`comment`）は人間が書くメモ。** AIは翻訳の参考として読むだけにし、新規作成・追記・変更・削除・自動補完をしない。空欄も埋めない。
 - AIに文脈を調査させた結果は、コメント欄とは別の自由記述欄に保存する。人間のメモと調査結果を自動で移動・統合しない。既存のコメントはそのまま残す。
-- Tableタブの各行のCommentの右にメモアイコンを置き、開くとそのキーの調査結果を確認できる。アイコン列には見出しを表示しない。普段は本文を表に表示しない。
+- Tableタブの各行のCommentの右に詳細アイコンを置き、開くとそのキーの調査結果を確認できる。アイコン列には見出しを表示しない。普段は本文を表に表示しない。
 - AI向けの調査手順には、表示場所・表示条件・表示時間・話者・根拠・不明点を、分かる範囲で記述する目安を設ける。確認できた事実と推測を区別し、確認できないことは不明とする。
 - 翻訳ジョブには、詳細を開いたかに関係なく、シートの翻訳方針・人間のコメント・AIの調査結果を区別して渡す。AIの調査結果で人間の指示を上書きしない。
 - AIが実行するCSV取り込みは、dry-run・本番ともに `ImportComments = false` を必須とする。batch modeでは `-localoNoComments` を指定する。人間が自分でコメントを編集・取り込みできる既存APIは残す。
@@ -120,11 +120,11 @@ UIのボタン・タブ・項目名・見出しは英語、ツールチップ・
 | §2 共通ナレッジ | なし | プロジェクトデータとして `Assets/LocaloAssets/Knowledge/` に置く（§3.6） |
 | §3 承認済み翻訳 | なし | 翻訳者専用セルの訳を「お手本」、それ以外の既存訳を「参考例」として、テーブルからそのまま引く（§3.5） |
 | §4 使用箇所検索 | 手がかりは `LocalizeTextBase.localizationKey`（Scene/PrefabのYAML上は `localizationKey:`）と、Script中の `GetLocalizedString("…")` | 検索ツールを足す（§6.4、後のフェーズ） |
-| §5・§7・§8 手順とSkill | `LocaloEditorWindow.SetupTab.cs:44` のインストーラが `Editor/Resources/LocaloProjectSkill*Template.txt` を `.agents/skills/localo` に配る | 同じインストーラで翻訳Skillを配る（§7） |
-| §6 機械QA | `LocaloCsv.cs:138` `PlaceholderPattern`、`:599` `PlaceholderSignature`、`AddTextWarnings`。いずれもEnglishと比較している | Validatorとして切り出し、原文言語と比較するように改める（§6.2） |
+| §5・§7・§8 手順とSkill | `LocaloEditorWindow.SetupTab.cs` のインストーラ（`InstallProjectSkill`）が `Editor/Resources/LocaloProjectSkill*Template.txt` を `.agents/skills/localo` に配る | 同じインストーラで翻訳Skillを配る（§7） |
+| §6 機械QA | `LocaloCsv` の `PlaceholderPattern`、`PlaceholderSignature`、`AddTextWarnings`。いずれもEnglishと比較している | Validatorとして切り出し、原文言語と比較するように改める（§6.2） |
 | §9 書き戻し・人間との出し入れ | `LocaloCsv` と `LocaloCsvCommandLine`。export、dry-run、baselineでの競合検出、`Languages` の絞り込み、Undo 1回のimport、batch mode | 作り直さずに拡張する（§5）。CSVの parse / write は `LocaloCsvFormat` を使い回す |
 
-> 注：CSV機能（`LocaloCsv*.cs`、`LocaloCsvTests.cs`）は、この設計を書いた時点で未コミット。この設計の前提になるため、先に確定させる（§9 P0）。
+> 注：CSV機能（`LocaloCsv*.cs`、`LocaloCsvTests.cs`）は、この設計を書いた時点では未コミットだった。現在はコミット済み（§9 P0 は完了）。
 
 ---
 
@@ -610,7 +610,7 @@ SKILL.md に書くこと：
 
 | フェーズ | 内容 | 検証（EditModeテスト） |
 |---|---|---|
-| P0 | 未コミットのCSV機能を確定する（コミットするかどうかは人間が判断する） | `LocaloCsvTests` が通る |
+| P0（完了） | 未コミットのCSV機能を確定する（コミットするかどうかは人間が判断する） | `LocaloCsvTests` が通る |
 | P1 | §3のフィールド追加（種類、原文の控え、行の話者、シートの文脈）、古い訳の判定、種類切り替えと確認済みにするAPI、Knowledgeの雛形作成（`characters.md` の雛形を含む） | 新フィールドの無い旧形式のYAMLを読み込むと `Unset` / 空 / 初期値になる。改行コードだけの違いは古い訳と判定しない。控えが空なら「不明」になる。種類を切り替えても控えは変わらない。確認済みにすると控えが今の原文になる |
 | P2 | `LocaloTextValidator` の切り出しと拡張、`LocaloTranslationRules`、CSVの Glossary と禁止表現の読み込み、`characters.md` の見出しの読み取り | 検査項目ごとの正例と負例。既存のCSV警告テストが引き続き通る。見出しから名前の一覧とセクションを正しく取り出せる |
 | P3 | CSV exportの絞り込みと参考列（§5.1）、書き込み時の控えの記録、翻訳ジョブの書き出しと取り込み（§6.1・§5.3）、`localo-translate` Skillの初版 | 翻訳者専用セルへの変更がerrorになり、何も書き込まれない。訳の入った未設定セルがskipされる。ジョブの対象抽出が正しい。`(Previous)` と `Speaker` の列がimportで読み飛ばされる |
@@ -624,7 +624,7 @@ SKILL.md に書くこと：
 
 1. Tableタブで人が訳を手で直したとき、そのセルが未設定なら、自動でAI担当にするか。（案：しない。種類は人が明示的に決める）
 2. 要確認の一覧を、チャットの作業報告とは別に、ファイル（例：`Localization/translation-report.md`）としても残すか。
-3. シート全体を翻訳者専用にする既定値が必要か（例：シナリオのシートはすべて翻訳者に任せる）。必要なら、`LocalizationTable` に `translatorLanguages` を足す。
-4. 表示領域の目安を、将来構造化するか（今は `contextNotes` と `comment` に自由記述）。
+3. ~~シート全体を翻訳者専用にする既定値が必要か~~ → 解決済み。`LocalizationTable.translatorLanguages`（Translator Lock）として実装した。
+4. 表示領域の目安を、将来構造化するか（今は行の `aiDisplaySpace`（器）に自由記述）。
 5. キャラクター設定を、Localoの画面（専用タブ）で編集できるようにするか（今は `characters.md` をテキストエディタで直接編集する）。
 6. 会話の相手を、話者と同じように列として持つか（今は `comment` に「相手：〇〇」と書く）。

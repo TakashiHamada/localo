@@ -71,14 +71,13 @@ namespace Localo.Editor
                     {
                         EditorUtility.DisplayDialog(
                             "Invalid Localo Settings Path",
-                            $"Localo loads its runtime settings from:\n{SettingsAssetPath}\n\n" +
-                            "Move or create the asset at that path, then assign it again.",
+                            $"Localoは次の場所から実行時の設定を読み込みます。\n{SettingsAssetPath}\n\n" +
+                            "この場所にアセットを移動または作成し、もう一度設定してください。",
                             "OK");
                     }
                     else
                     {
                         _settings = picked;
-                        SavePersistedSettings();
                         SelectFirstRegisteredTableWhenCurrentIsInvalid();
                         SavePersistedTable();
                         InitLanguageOrderList();
@@ -90,8 +89,8 @@ namespace Localo.Editor
                 if (_settings == null)
                 {
                     EditorGUILayout.HelpBox(
-                        "No LocalizationSettings asset assigned. Click Quick Setup to generate everything " +
-                        "you need automatically, or assign an existing asset above.",
+                        "LocalizationSettingsが設定されていません。Quick Setupで必要なアセットを自動作成するか、" +
+                        "上のSettings Assetで既存の設定を指定してください。",
                         MessageType.Info);
                     if (GUILayout.Button("Quick Setup", GUILayout.Height(28f)))
                         RunQuickSetup();
@@ -107,7 +106,7 @@ namespace Localo.Editor
                         EditorGUILayout.TextField("Language 0",
                             LocalizationLanguages.GetDisplayName(LocalizationLanguages.BaseLanguage));
                     }
-                    EditorGUILayout.HelpBox("English is always fixed at the head. It cannot be removed or reordered.", MessageType.None);
+                    EditorGUILayout.HelpBox("Englishは先頭に固定されています。削除や並べ替えはできません。", MessageType.None);
                 }
 
                 EditorGUILayout.Space(8f);
@@ -129,7 +128,7 @@ namespace Localo.Editor
                     if (hasHiddenLanguageColumns)
                     {
                         EditorGUILayout.HelpBox(
-                            "Some language columns are hidden in the Table tab. Hidden data is preserved.",
+                            "Tableで非表示になっている言語列があります。非表示でもデータは保持されます。",
                             MessageType.Warning);
                     }
                 }
@@ -141,7 +140,7 @@ namespace Localo.Editor
                     if (_languageOrderList == null) InitLanguageOrderList();
                     _languageOrderList.DoLayoutList();
                     EditorGUILayout.HelpBox(
-                        "Drag to reorder. This order is reflected in the Table tab's column order (English is not included here).",
+                        "ドラッグして並べ替えると、Tableの列順に反映されます。先頭に固定されたEnglishはここには表示されません。",
                         MessageType.None);
                 }
 
@@ -151,7 +150,7 @@ namespace Localo.Editor
                     EditorGUILayout.LabelField("-- Column Widths --", EditorStyles.boldLabel);
                     DrawColumnWidthFields();
                     EditorGUILayout.HelpBox(
-                        "Pixel width of each column in the Table tab's grid.",
+                        "Tableに表示する各列の幅をピクセル単位で設定します。",
                         MessageType.None);
                 }
 
@@ -177,14 +176,14 @@ namespace Localo.Editor
             {
                 EditorGUILayout.LabelField("-- AI Project Skill --", EditorStyles.boldLabel);
                 EditorGUILayout.LabelField(
-                    "Install Localo's AI guide into .agents/skills/localo for this Unity project only.",
+                    "このUnityプロジェクト専用のAI向け手順を、.agents/skills/localoにインストールします。",
                     EditorStyles.wordWrappedLabel);
 
                 bool isInstalled = File.Exists(GetProjectSkillFilePath());
                 EditorGUILayout.HelpBox(
                     isInstalled
-                        ? "Installed. Updating replaces the Localo skill files after confirmation."
-                        : "Not installed. This does not modify global AI skills.",
+                        ? "インストール済みです。更新時は確認後にLocaloのスキルファイルを置き換えます。"
+                        : "未インストールです。AIのグローバル設定やスキルは変更しません。",
                     isInstalled ? MessageType.Info : MessageType.None);
 
                 string buttonLabel = isInstalled ? "Update Project AI Skill" : "Install Project AI Skill";
@@ -242,15 +241,15 @@ namespace Localo.Editor
             {
                 EditorUtility.DisplayDialog(
                     "Localo Project AI Skill",
-                    "The bundled Localo skill templates could not be found. Reinstall the Localo package and try again.",
+                    "同梱のAIスキルテンプレートが見つかりません。Localoパッケージを再インストールしてからお試しください。",
                     "OK");
                 return;
             }
 
             if (isInstalled && !EditorUtility.DisplayDialog(
                     "Update Localo Project AI Skill",
-                    "Replace .agents/skills/localo/SKILL.md and agents/openai.yaml?\n\n" +
-                    "Any project-specific edits to those files will be overwritten.",
+                    ".agents/skills/localo/SKILL.mdとagents/openai.yamlを置き換えますか？\n\n" +
+                    "これらのファイルに加えたプロジェクト独自の変更は上書きされます。",
                     "Replace", "Cancel"))
             {
                 return;
@@ -269,8 +268,8 @@ namespace Localo.Editor
 
                 EditorUtility.DisplayDialog(
                     "Localo Project AI Skill",
-                    "Installed Localo's AI skill for this project:\n.agents/skills/localo\n\n" +
-                    "Open a new AI task to use the updated project skill.",
+                    "このプロジェクトにLocaloのAIスキルをインストールしました。\n.agents/skills/localo\n\n" +
+                    "更新したスキルを使うには、新しいAIタスクを開始してください。",
                     "OK");
             }
             catch (System.Exception exception)
@@ -278,7 +277,7 @@ namespace Localo.Editor
                 Debug.LogError($"[Localo] Failed to install project AI skill: {exception}");
                 EditorUtility.DisplayDialog(
                     "Localo Project AI Skill",
-                    "Localo could not write the project AI skill. Check the project folder permissions.",
+                    "AIスキルを書き込めませんでした。プロジェクトフォルダーの書き込み権限を確認してください。",
                     "OK");
             }
         }
@@ -307,7 +306,6 @@ namespace Localo.Editor
             if (existingSettings != null)
             {
                 _settings = existingSettings;
-                SavePersistedSettings();
                 // Also re-assign a table so the Table tab is immediately usable, not just Settings
                 // (mirrors the "ready to edit" promise made by the fresh-creation path below).
                 SelectFirstRegisteredTableWhenCurrentIsInvalid();
@@ -317,7 +315,7 @@ namespace Localo.Editor
                 Repaint();
                 EditorUtility.DisplayDialog(
                     "Localo Quick Setup",
-                    $"Found an existing settings asset and assigned it:\n{SettingsAssetPath}",
+                    $"既存の設定アセットが見つかったため、設定しました。\n{SettingsAssetPath}",
                     "OK");
                 return;
             }
@@ -326,8 +324,8 @@ namespace Localo.Editor
             {
                 EditorUtility.DisplayDialog(
                     "Localo Quick Setup",
-                    $"Another asset already exists at the required settings path:\n{SettingsAssetPath}\n\n" +
-                    "Move that asset before running Quick Setup. Localo did not overwrite it.",
+                    $"設定の保存先に別のアセットがあります。\n{SettingsAssetPath}\n\n" +
+                    "そのアセットを移動してからQuick Setupを実行してください。既存アセットは上書きしていません。",
                     "OK");
                 return;
             }
@@ -362,7 +360,6 @@ namespace Localo.Editor
 
             _settings = settings;
             _table = table;
-            SavePersistedSettings();
             SavePersistedTable();
             InitLanguageOrderList();
             RecomputeFilteredIndices();
@@ -370,7 +367,7 @@ namespace Localo.Editor
 
             EditorUtility.DisplayDialog(
                 "Localo Quick Setup",
-                $"Created:\n{SettingsAssetPath}\n{tablePath}\n\nBoth are assigned and ready to edit on the Table tab.",
+                $"次のアセットを作成・設定しました。\n{SettingsAssetPath}\n{tablePath}\n\nTableタブで編集できます。",
                 "OK");
         }
 
@@ -607,7 +604,7 @@ namespace Localo.Editor
                 _settings.registeredTables = new List<TableInfo>();
 
             EditorGUILayout.HelpBox(
-                "Each key is the table asset filename and updates automatically when the asset is renamed.",
+                "シート名はテーブルアセットのファイル名です。アセット名を変更すると、この一覧にも反映されます。",
                 MessageType.None);
 
             bool tableInfoChanged = false;
@@ -666,6 +663,8 @@ namespace Localo.Editor
         /// </summary>
         private void CreateAndRegisterNewTable()
         {
+            if (_settings == null) return;
+
             // Settings may have been assigned manually (bypassing Quick Setup), so the Tables
             // folder isn't guaranteed to exist yet.
             EnsureFolder("Assets", "LocaloAssets");
@@ -679,10 +678,13 @@ namespace Localo.Editor
             Undo.RegisterCreatedObjectUndo(table, "Add Registered Table");
 
             Undo.RecordObject(_settings, "Add Registered Table");
+            if (_settings.registeredTables == null)
+                _settings.registeredTables = new List<TableInfo>();
             _settings.registeredTables.Add(new TableInfo { tableAsset = table });
             EditorUtility.SetDirty(_settings);
             AssetDatabase.SaveAssets();
             MarkDuplicateKeysDirty();
+            QueueTableSwitch(table);
         }
     }
 }

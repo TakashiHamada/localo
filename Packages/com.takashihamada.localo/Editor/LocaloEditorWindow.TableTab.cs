@@ -36,6 +36,15 @@ namespace Localo.Editor
         private const float SelectionScrollBottomPaddingRows = 1f;
         private const float EditingOverlayMinimumRows = 3f;
         private const float DetailsColumnWidth = 28f;
+        private const float SheetPopupWidth = 280f;
+        private const string DetailsIconName = "TextAsset Icon";
+        // Translator Lock の列のセルは、先頭にこの印を付けて表示する（保存される文字列には含めない）。
+        private const string TranslatorLockMarker = "■ ";
+        private const string TranslatorLockCellTooltip = "翻訳者担当の列。AIは変更しません。\n";
+
+        // 詳細アイコンは全行で同じなので、tooltip の2種類だけを作って使い回す。
+        private GUIContent _detailsButtonEmptyContent;
+        private GUIContent _detailsButtonFilledContent;
 
         private readonly GUIContent _cellContent = new GUIContent();
         private readonly GUIContent _measurementContent = new GUIContent();
@@ -152,6 +161,57 @@ namespace Localo.Editor
         }
 
         /// <summary>
+        /// 登録済みシートの選択ポップアップ。Table タブと Translation タブで共有する。
+        /// 選択中のシート（_table）は全タブ共通なので、どちらで切り替えても QueueTableSwitch を通り、
+        /// Table タブの検索・選択もリセットされる。label が null ならラベルなしで描画する。
+        /// </summary>
+        private void DrawSheetPopup(GUIContent label, params GUILayoutOption[] options)
+        {
+            if (_settings == null || _settings.registeredTables == null || _settings.registeredTables.Count == 0)
+                return;
+
+            int currentIndex = _table != null
+                ? _settings.registeredTables.FindIndex(t => t.tableAsset == _table)
+                : -1;
+            int labelCount = _settings.registeredTables.Count + (currentIndex < 0 ? 1 : 0);
+            if (_tablePopupLabels.Length != labelCount)
+                _tablePopupLabels = new string[labelCount];
+
+            for (int i = 0; i < _settings.registeredTables.Count; i++)
+            {
+                string tableKey = _settings.registeredTables[i].Key;
+                _tablePopupLabels[i] = string.IsNullOrEmpty(tableKey) ? "(no table)" : tableKey;
+            }
+
+            int shownIndex = currentIndex;
+            if (currentIndex < 0)
+            {
+                // No table, or a table that isn't registered: show an explicit placeholder
+                // entry instead of silently displaying entry 0 — that would both lie about
+                // the state and make entry 0 unselectable (selection is index-change based).
+                _tablePopupLabels[labelCount - 1] =
+                    _table == null ? "(none)" : $"{_table.name} (unregistered)";
+                shownIndex = labelCount - 1;
+            }
+
+            int newIndex;
+            if (label == null)
+            {
+                newIndex = EditorGUILayout.Popup(shownIndex, _tablePopupLabels, options);
+            }
+            else
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    EditorGUILayout.PrefixLabel(label);
+                    newIndex = EditorGUILayout.Popup(shownIndex, _tablePopupLabels, options);
+                }
+            }
+            if (newIndex != shownIndex && newIndex < _settings.registeredTables.Count)
+                QueueTableSwitch(_settings.registeredTables[newIndex].tableAsset);
+        }
+
+        /// <summary>
         /// Table popup + search field share one row. The table's asset itself is only ever picked on
         /// the Setup tab's registered-tables list, so this tab shows just the key popup, not a redundant
         /// ObjectField — freeing up the row for the search field that used to sit on its own line below.
@@ -160,36 +220,7 @@ namespace Localo.Editor
         {
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (_settings != null && _settings.registeredTables != null && _settings.registeredTables.Count > 0)
-                {
-                    int currentIndex = _table != null
-                        ? _settings.registeredTables.FindIndex(t => t.tableAsset == _table)
-                        : -1;
-                    int labelCount = _settings.registeredTables.Count + (currentIndex < 0 ? 1 : 0);
-                    if (_tablePopupLabels.Length != labelCount)
-                        _tablePopupLabels = new string[labelCount];
-
-                    for (int i = 0; i < _settings.registeredTables.Count; i++)
-                    {
-                        string tableKey = _settings.registeredTables[i].Key;
-                        _tablePopupLabels[i] = string.IsNullOrEmpty(tableKey) ? "(no table)" : tableKey;
-                    }
-
-                    int shownIndex = currentIndex;
-                    if (currentIndex < 0)
-                    {
-                        // No table, or a table that isn't registered: show an explicit placeholder
-                        // entry instead of silently displaying entry 0 — that would both lie about
-                        // the state and make entry 0 unselectable (selection is index-change based).
-                        _tablePopupLabels[labelCount - 1] =
-                            _table == null ? "(none)" : $"{_table.name} (unregistered)";
-                        shownIndex = labelCount - 1;
-                    }
-                    int newIndex = EditorGUILayout.Popup(
-                        shownIndex, _tablePopupLabels, GUILayout.Width(280f));
-                    if (newIndex != shownIndex && newIndex < _settings.registeredTables.Count)
-                        QueueTableSwitch(_settings.registeredTables[newIndex].tableAsset);
-                }
+                DrawSheetPopup(null, GUILayout.Width(SheetPopupWidth));
 
                 if (_table != null)
                 {
@@ -403,7 +434,7 @@ namespace Localo.Editor
         {
             Rect rect = GUILayoutUtility.GetRect(DetailsColumnWidth, rowHeight,
                 GUILayout.Width(DetailsColumnWidth), GUILayout.Height(rowHeight));
-            int detailsCol = GetEditableColumnCount();
+            int detailsCol = GetDetailsColumnIndex();
             if (Event.current.type == EventType.Repaint)
             {
                 EditorGUI.DrawRect(rect, IsCellInSelection(filteredIdx, detailsCol)
@@ -411,12 +442,9 @@ namespace Localo.Editor
                 if (filteredIdx == _selectedRow && _selectedCol == detailsCol)
                     _selectedCellRect = rect;
             }
-            var content = new GUIContent(EditorGUIUtility.IconContent("TextAsset Icon").image,
-                string.IsNullOrEmpty(row.aiScene) && string.IsNullOrEmpty(row.aiDisplaySpace)
-                    ? "AIが調査した場面と器はまだありません。クリック、または選択してEnterで行の詳細を開きます。"
-                    : "クリック、または選択してEnterで、この行の場面と器を確認・修正できます。");
+            bool hasRowContext = !string.IsNullOrEmpty(row.aiScene) || !string.IsNullOrEmpty(row.aiDisplaySpace);
             if (GUI.Button(new Rect(rect.x + 2f, rect.y + 1f, rect.width - 4f, RowHeight - 2f),
-                    content, EditorStyles.miniButton))
+                    GetDetailsButtonContent(hasRowContext), EditorStyles.miniButton))
             {
                 if (_mode == EditorMode.Insert) CommitInsertAndReturnToNormal();
                 _selectedRow = _selectionAnchorRow = filteredIdx;
@@ -426,8 +454,23 @@ namespace Localo.Editor
                 _isDragSelecting = false;
                 GUI.FocusControl(null);
                 OpenSelectedRowDetails();
+                // 別ウィンドウを開いた後のレイアウト不整合を避ける（ツールバーの「?」ボタンと同じ扱い）。
+                GUIUtility.ExitGUI();
             }
             DrawCellBorder(rect);
+        }
+
+        private GUIContent GetDetailsButtonContent(bool hasRowContext)
+        {
+            if (_detailsButtonEmptyContent == null)
+            {
+                Texture icon = EditorGUIUtility.IconContent(DetailsIconName).image;
+                _detailsButtonEmptyContent = new GUIContent(icon,
+                    "AIが調査した場面と器はまだありません。クリック、または選択してEnterで行の詳細を開きます。");
+                _detailsButtonFilledContent = new GUIContent(icon,
+                    "クリック、または選択してEnterで、この行の場面と器を確認・修正できます。");
+            }
+            return hasRowContext ? _detailsButtonFilledContent : _detailsButtonEmptyContent;
         }
 
         private float CalculateStoredRowHeight(LocalizationRow row)
@@ -618,9 +661,9 @@ namespace Localo.Editor
             string fullDisplayText = FormatStoredTextForCellDisplay(displayValue);
             bool translatorCell = col >= 1 && col <= GetVisibleLanguageCount() &&
                 _table.IsTranslatorLanguage(GetVisibleLanguageAt(col - 1));
-            if (translatorCell) fullDisplayText = "■ " + fullDisplayText;
+            if (translatorCell) fullDisplayText = TranslatorLockMarker + fullDisplayText;
             _cellContent.text = BuildEllipsizedCellText(fullDisplayText, rect.width, labelStyle);
-            _cellContent.tooltip = translatorCell ? "翻訳者担当の列。AIは変更しません。\n" + fullDisplayText : fullDisplayText;
+            _cellContent.tooltip = translatorCell ? TranslatorLockCellTooltip + fullDisplayText : fullDisplayText;
             EditorGUI.LabelField(rect, _cellContent, labelStyle);
             DrawCellBorder(rect);
 
@@ -742,18 +785,28 @@ namespace Localo.Editor
         }
 
         /// <summary>
+        /// The selection range clamped to existing rows and to editable columns (the details column is
+        /// excluded). Returns false when nothing editable is selected, e.g. only the details column.
+        /// Callers must ensure _filteredIndices is not empty.
+        /// </summary>
+        private bool TryGetEditableSelectionBounds(out int rowLo, out int rowHi, out int colLo, out int colHi)
+        {
+            (rowLo, rowHi, colLo, colHi) = GetSelectionBounds();
+            rowLo = Mathf.Clamp(rowLo, 0, _filteredIndices.Count - 1);
+            rowHi = Mathf.Clamp(rowHi, 0, _filteredIndices.Count - 1);
+            colHi = Mathf.Min(colHi, GetEditableColumnCount() - 1);
+            return colLo <= colHi;
+        }
+
+        /// <summary>
         /// Clears the text content of every cell in the current selection range (Delete/Backspace).
-        /// Unlike 'x'/dd this never removes rows — only their cell contents.
+        /// Like 'x' and unlike dd, this never removes rows — only their cell contents.
         /// </summary>
         private void ClearSelectedCells()
         {
             if (_table == null || _filteredIndices.Count == 0) return;
 
-            var (rowLo, rowHi, colLo, colHi) = GetSelectionBounds();
-            rowLo = Mathf.Clamp(rowLo, 0, _filteredIndices.Count - 1);
-            rowHi = Mathf.Clamp(rowHi, 0, _filteredIndices.Count - 1);
-            colHi = Mathf.Min(colHi, GetEditableColumnCount() - 1);
-            if (colLo > colHi) return;
+            if (!TryGetEditableSelectionBounds(out int rowLo, out int rowHi, out int colLo, out int colHi)) return;
 
             Undo.RecordObject(_table, "Clear Localization Cells");
             bool anyChanged = false;
@@ -792,11 +845,7 @@ namespace Localo.Editor
         {
             if (_table == null || _filteredIndices.Count == 0) return;
 
-            var (rowLo, rowHi, colLo, colHi) = GetSelectionBounds();
-            rowLo = Mathf.Clamp(rowLo, 0, _filteredIndices.Count - 1);
-            rowHi = Mathf.Clamp(rowHi, 0, _filteredIndices.Count - 1);
-            colHi = Mathf.Min(colHi, GetEditableColumnCount() - 1);
-            if (colLo > colHi) return;
+            if (!TryGetEditableSelectionBounds(out int rowLo, out int rowHi, out int colLo, out int colHi)) return;
 
             var sb = new StringBuilder();
             for (int r = rowLo; r <= rowHi; r++)
@@ -828,12 +877,8 @@ namespace Localo.Editor
             var parsedRows = ParseTsv(clipboard);
             if (parsedRows.Count == 0) return;
 
-            var (rowLo, rowHi, colLo, colHi) = GetSelectionBounds();
-            rowLo = Mathf.Clamp(rowLo, 0, _filteredIndices.Count - 1);
-            rowHi = Mathf.Clamp(rowHi, 0, _filteredIndices.Count - 1);
+            if (!TryGetEditableSelectionBounds(out int rowLo, out int rowHi, out int colLo, out int colHi)) return;
             int colCount = GetEditableColumnCount();
-            colHi = Mathf.Min(colHi, colCount - 1);
-            if (colLo > colHi) return;
 
             bool isSingleCellClipboard = parsedRows.Count == 1 && parsedRows[0].Count == 1;
 

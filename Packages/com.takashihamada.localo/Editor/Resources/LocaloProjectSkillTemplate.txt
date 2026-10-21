@@ -34,7 +34,7 @@ Treat `Packages/com.takashihamada.localo/` as the installed tool and `Assets/Loc
 - 行：`LocalizationRow.aiScene`（場面：どこで、何がきっかけで、誰に向けて表示されるか）と `aiDisplaySpace`（器：表示する部品・幅・行数・フォントサイズ・自動縮小・表示時間）。どちらもAIがキーをもとに調査して書き、人間は確認だけ行う。
 - 共通用語集は `LocalizationSettings.glossary` に保存される。用語の正式表記は用語集を優先する。
 - 翻訳前に `Localo.Editor.LocaloTranslationContext.ExportToString()`、または `ExportRowToString(table, key)` を呼ぶ。文章の種類・方針・用語集・翻訳文・人間のコメント・場面・器が区別されたJSONを読み、翻訳に反映する。場面や器が空・不明なら、下の手順で調査する。
-- 場面と器は `LocaloTranslationContext.SetRowContext(table, key, scene, displaySpace)` で保存する。`null` を渡した項目は変更しない。このAPIはコメント欄・翻訳文・シートの設定を変更しない。旧APIの `SetResearch` は使わない。人間はTableの行ごとのCommentの右にあるメモアイコンから場面と器を確認・修正できる。
+- 場面と器は `LocaloTranslationContext.SetRowContext(table, key, scene, displaySpace)` で保存する。`null` を渡した項目は変更しない。このAPIはコメント欄・翻訳文・シートの設定を変更しない。旧APIの `SetResearch` は使わない。人間はTableの行ごとのCommentの右にある詳細アイコンから場面と器を確認・修正できる。
 
 ### 行の文脈（場面と器）の調査手順
 

@@ -15,16 +15,16 @@ namespace Localo.Runtime
     public abstract class LocalizeTextBase : MonoBehaviour
     {
         [Header("-- Localization --")]
-        [Tooltip("Translation key looked up via LocaloManager (e.g. \"Key_StartButton\").")]
+        [Tooltip("このテキストに表示する文章の翻訳キーです。Localoに登録されたキーを指定します。")]
         [FormerlySerializedAs("_key")]
         [SerializeField] protected string localizationKey = string.Empty;
 
 #if UNITY_EDITOR
         [Header("-- Edit Mode Preview --")]
-        [Tooltip("ON: preview this label in Test Language below. Edit Mode preview only — ignored in Play Mode.")]
+        [Tooltip("ONにすると、下のTest Languageで表示をプレビューします。Edit Mode専用で、Play Modeには影響しません。")]
         [SerializeField] private bool _useTestLanguage;
 
-        [Tooltip("Language used for the Edit Mode preview while Use Test Language is ON.")]
+        [Tooltip("Use Test LanguageがONのとき、Edit Modeのプレビューに使う言語です。")]
         [SerializeField] private SystemLanguage _testLanguage = LocalizationLanguages.BaseLanguage;
 
         private static bool _editModeTableCacheDirty = true;

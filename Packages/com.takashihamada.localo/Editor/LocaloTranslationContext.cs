@@ -8,22 +8,28 @@ using UnityEngine;
 namespace Localo.Editor
 {
     /// <summary>
-    /// AIに渡す翻訳情報の書き出しと、行の場面・器だけを保存する入口。
+    /// AIに渡すコンテキストJSONの書き出しと、行の場面・器だけを保存する入口。
+    /// JSONの構造（キー名・textTypeのenum名）はプロジェクトのAIスキルが前提にしている契約なので、
+    /// 変える場合は schemaVersion を上げ、Editor/Resources/LocaloProjectSkillTemplate.txt も合わせて更新する。
     /// </summary>
     public static class LocaloTranslationContext
     {
+        /// <summary>全シートの文脈と全行をJSONで返す。</summary>
         public static string ExportToString(LocalizationSettings settings = null)
         {
-            settings = ResolveSettings(settings);
+            settings = LocaloEditorSettings.Resolve(settings);
             var context = CreateContext(settings);
-            foreach (LocalizationTable table in RegisteredTables(settings))
+            foreach (LocalizationTable table in LocaloEditorSettings.RegisteredTables(settings))
                 context.tables.Add(CreateTableContext(table, table.rows));
             return JsonUtility.ToJson(context, true);
         }
 
+        /// <summary>
+        /// 指定キーの1行だけをJSONで返す。用語集と、全シートから集めた翻訳者のお手本（translatorExamples）は含める。
+        /// </summary>
         public static string ExportRowToString(LocalizationTable table, string key, LocalizationSettings settings = null)
         {
-            settings = ResolveSettings(settings);
+            settings = LocaloEditorSettings.Resolve(settings);
             RequireRegisteredTable(settings, table);
             LocalizationRow row = FindUniqueRow(table, key);
             var context = CreateContext(settings);
@@ -37,7 +43,7 @@ namespace Localo.Editor
         public static void SetRowContext(LocalizationTable table, string key, string scene, string displaySpace,
             LocalizationSettings settings = null)
         {
-            settings = ResolveSettings(settings);
+            settings = LocaloEditorSettings.Resolve(settings);
             RequireRegisteredTable(settings, table);
             LocalizationRow row = FindUniqueRow(table, key);
             bool sceneChanged = scene != null && row.aiScene != scene;
@@ -60,22 +66,9 @@ namespace Localo.Editor
             SetRowContext(table, key, research ?? string.Empty, null, settings);
         }
 
-        private static LocalizationSettings ResolveSettings(LocalizationSettings settings)
-        {
-            if (settings == null) settings = Resources.Load<LocalizationSettings>(LocaloDatabase.SettingsResourcesPath);
-            if (settings == null) throw new InvalidOperationException("Localoの設定が見つかりません。Setupを実行してください。");
-            return settings;
-        }
-
-        private static IEnumerable<LocalizationTable> RegisteredTables(LocalizationSettings settings)
-        {
-            return (settings.registeredTables ?? new List<TableInfo>())
-                .Select(info => info.tableAsset).Where(table => table != null).Distinct();
-        }
-
         private static void RequireRegisteredTable(LocalizationSettings settings, LocalizationTable table)
         {
-            if (table == null || !RegisteredTables(settings).Contains(table))
+            if (table == null || !LocaloEditorSettings.RegisteredTables(settings).Contains(table))
                 throw new ArgumentException("設定に登録されたテーブルを指定してください。", nameof(table));
         }
 
@@ -102,7 +95,7 @@ namespace Localo.Editor
                     notes = entry.notes ?? string.Empty
                 });
             }
-            foreach (LocalizationTable table in RegisteredTables(settings))
+            foreach (LocalizationTable table in LocaloEditorSettings.RegisteredTables(settings))
             {
                 List<LocalizationRow> examples = (table.rows ?? new List<LocalizationRow>())
                     .Where(row => row?.translations != null && row.translations.Any(translation =>
@@ -139,12 +132,14 @@ namespace Localo.Editor
             return context;
         }
 
-        private static List<TranslationContext> CreateTranslations(List<LanguageData> translations)
+        private static List<LanguageTextJson> CreateTranslations(List<LanguageData> translations)
         {
-            return (translations ?? new List<LanguageData>()).Select(value => new TranslationContext
+            return (translations ?? new List<LanguageData>()).Select(value => new LanguageTextJson
                 { language = value.language.ToString(), text = value.text ?? string.Empty }).ToList();
         }
 
+        // JsonUtilityで書き出すDTO。フィールド名がそのままJSONのキーになる（クラス名は出力に影響しない）。
+        // schemaVersion 3: 行のaiResearchをaiScene/aiDisplaySpaceに分け、シートにtextTypeを追加した。
         [Serializable]
         private sealed class ProjectContext
         {
@@ -174,7 +169,7 @@ namespace Localo.Editor
         private sealed class GlossaryContext
         {
             public string source;
-            public List<TranslationContext> translations;
+            public List<LanguageTextJson> translations;
             public string notes;
         }
 
@@ -193,14 +188,14 @@ namespace Localo.Editor
         private sealed class RowContext
         {
             public string key;
-            public List<TranslationContext> translations;
+            public List<LanguageTextJson> translations;
             public string humanComment;
             public string aiScene;
             public string aiDisplaySpace;
         }
 
         [Serializable]
-        private sealed class TranslationContext
+        private sealed class LanguageTextJson
         {
             public string language;
             public string text;

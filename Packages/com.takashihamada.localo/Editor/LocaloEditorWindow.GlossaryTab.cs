@@ -1,3 +1,10 @@
+// =============================================================================
+// LocaloEditorWindow.GlossaryTab.cs — 全シート共通の用語集
+// =============================================================================
+// LocalizationSettings.glossary を編集する。内容は LocaloTranslationContext のJSONに含まれ、
+// 全シートの翻訳でAIが参照する。
+// =============================================================================
+
 using UnityEditor;
 using UnityEngine;
 
@@ -5,6 +12,8 @@ namespace Localo.Editor
 {
     public sealed partial class LocaloEditorWindow
     {
+        private const float GlossaryRemoveButtonWidth = 64f;
+
         private Vector2 _glossaryScrollPosition;
 
         private void DrawGlossaryTab()
@@ -24,7 +33,7 @@ namespace Localo.Editor
                     "登録した内容は、全シートの翻訳で参照します。",
                     MessageType.None);
 
-                var settingsObject = new SerializedObject(_settings);
+                using var settingsObject = new SerializedObject(_settings);
                 settingsObject.Update();
                 SerializedProperty glossary = settingsObject.FindProperty("glossary");
                 for (int i = 0; i < glossary.arraySize; i++)
@@ -34,8 +43,8 @@ namespace Localo.Editor
                     {
                         using (new EditorGUILayout.HorizontalScope())
                         {
-                            EditorGUILayout.PropertyField(entry.FindPropertyRelative("source"), new GUIContent("Source Term", "正式表記を揃えたい固有名詞や共通用語を、原文の表記で記入します。"));
-                            if (GUILayout.Button(new GUIContent("Remove", "この用語を削除します。Undoで元に戻せます。"), GUILayout.Width(64f)))
+                            EditorGUILayout.PropertyField(entry.FindPropertyRelative("source"), new GUIContent("Source Term", "正式表記を揃えたい固有名詞や共通用語を、原文の言語（翻訳元）での表記で記入します。"));
+                            if (GUILayout.Button(new GUIContent("Remove", "この用語を削除します。Undoで元に戻せます。"), GUILayout.Width(GlossaryRemoveButtonWidth)))
                             {
                                 glossary.DeleteArrayElementAtIndex(i);
                                 SaveGlossarySettings(settingsObject);

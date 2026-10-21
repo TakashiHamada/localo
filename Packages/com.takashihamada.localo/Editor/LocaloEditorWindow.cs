@@ -5,7 +5,8 @@
 // Setup、Table、Translation、Glossaryの各タブを切り替える。ツールバー右端の「?」ボタンでGuideウィンドウを開く。
 // This file owns window state and OnGUI dispatch, plus the Vim-like keybinding
 // event handling core. Per-tab drawing lives in
-// LocaloEditorWindow.SetupTab.cs / LocaloEditorWindow.TableTab.cs.
+// LocaloEditorWindow.SetupTab.cs / .TableTab.cs / .TranslationTab.cs / .GlossaryTab.cs.
+// The Guide and the per-row Details are separate windows (LocaloGuideWindow / LocaloRowDetailsWindow).
 //
 // Vim event handling contract (see individual methods for details):
 //   1. Anything that changes the set of drawn rows — row insert/delete (o/dd),
@@ -33,7 +34,8 @@
 //      character duplicate paired with a preceding keyCode-only event; Esc uses a
 //      KeyUp-released guard. In Insert mode,
 //      Enter/Esc commit the edit. Saved <br> tokens render as visual line breaks
-//      after the edit is committed.
+//      after the edit is committed. In Normal mode, Enter on the details column
+//      (the icon right of Comment) opens LocaloRowDetailsWindow instead of Insert mode.
 //   5. IME (Japanese etc.): while a composition is active, every key must reach the
 //      text field untouched. Additionally, the Enter/Esc that CONFIRMS/CANCELS a
 //      composition can arrive here only after the composition string was already
@@ -62,8 +64,10 @@ namespace Localo.Editor
     {
         private const string MenuPath = "Window/Localo";
         private const string WindowTitle = "Localo";
-        private const string PersistedSettingsGuidKey = "com.takashihamada.localo.SettingsGuid";
-        private const string PersistedTableGuidKey = "com.takashihamada.localo.TableGuid";
+        // EditorPrefs are shared by every Unity project on the machine, so the key is scoped per project.
+        // Otherwise opening another Localo project would overwrite this project's selected table.
+        private static string PersistedTableGuidKey =>
+            "com.takashihamada.localo.TableGuid." + PlayerSettings.productGUID;
 
         // Control name for the search field. Cell control names are built at runtime from the row's real index.
         private const string SearchControlName = "LocSearchField";
@@ -210,7 +214,7 @@ namespace Localo.Editor
             _filteredIndices = new List<int>();
             Undo.undoRedoPerformed += MarkDuplicateKeysDirty;
             EditorApplication.projectChanged += MarkDuplicateKeysDirty;
-            RestorePersistedAssets();
+            LoadSettingsAndRestoreSelectedTable();
             InitLanguageOrderList();
         }
 
@@ -245,7 +249,10 @@ namespace Localo.Editor
             // Contract item 1: structural changes (table switch, o/dd) only during Layout,
             // so the paired event pass observes the exact same control count as its Layout pass.
             if (Event.current.type == EventType.Layout)
+            {
+                if (_settings == null) RestoreSettingsWhenAvailable();
                 ApplyPendingStructuralChanges();
+            }
 
             // Vim key handling happens before any drawing (contract item 4).
             HandleGlobalKeyEvents();
@@ -410,7 +417,7 @@ namespace Localo.Editor
                     evt.Use();
                     return;
                 }
-                if (_selectedCol == GetEditableColumnCount())
+                if (IsDetailsColumnSelected())
                     OpenSelectedRowDetails();
                 evt.Use();
                 return;
@@ -472,7 +479,7 @@ namespace Localo.Editor
                 case KeyCode.RightArrow: _pendingDPress = false; ResetSearchEscapeSequence(); MoveSelection(0, 1, evt.shift); evt.Use(); return;
                 case KeyCode.DownArrow: _pendingDPress = false; ResetSearchEscapeSequence(); MoveSelection(1, 0, evt.shift); evt.Use(); return;
                 case KeyCode.UpArrow: _pendingDPress = false; ResetSearchEscapeSequence(); MoveSelection(-1, 0, evt.shift); evt.Use(); return;
-                // Both keys clear the selected cells' text content (not the row itself — that's 'x'/dd).
+                // Both keys clear the selected cells' text content, like 'x' (not the row itself — that's dd).
                 // Backspace is included because the key physically labeled "delete" on Mac keyboards
                 // (no forward-delete key) reports as KeyCode.Backspace, not KeyCode.Delete.
                 case KeyCode.Delete:
@@ -554,8 +561,7 @@ namespace Localo.Editor
             if (_filteredIndices.Count > 0)
                 _selectedRow = Mathf.Clamp(_selectedRow + rowDelta, 0, _filteredIndices.Count - 1);
 
-            int colCount = GetEditableColumnCount() + 1; // メモアイコンも移動先に含める。
-            _selectedCol = Mathf.Clamp(_selectedCol + colDelta, 0, colCount - 1);
+            _selectedCol = Mathf.Clamp(_selectedCol + colDelta, 0, GetNavigableColumnCount() - 1);
 
             if (!extendSelection)
             {
@@ -571,7 +577,7 @@ namespace Localo.Editor
             int realRow = GetSelectedRealRowIndex();
             if (realRow < 0 || _table == null) return; // Nothing to do if there's no row (use 'o' to create one first)
 
-            if (_selectedCol == GetEditableColumnCount())
+            if (IsDetailsColumnSelected())
             {
                 OpenSelectedRowDetails();
                 return;
@@ -869,7 +875,7 @@ namespace Localo.Editor
             }
 
             _selectedRow = Mathf.Clamp(_selectedRow, 0, Mathf.Max(0, _filteredIndices.Count - 1));
-            int colCount = GetEditableColumnCount() + 1;
+            int colCount = GetNavigableColumnCount();
             _selectedCol = Mathf.Clamp(_selectedCol, 0, colCount - 1);
 
             if (_collapseSelectionOnResolve)
@@ -903,8 +909,16 @@ namespace Localo.Editor
         private float GetCommentColumnWidth() =>
             _settings != null ? Mathf.Max(MinColumnWidth, _settings.commentColumnWidth) : CommentColumnWidth;
 
-        // メモアイコンは選択できる操作欄であり、編集・コピー・貼り付けの対象ではない。
-        private int GetEditableColumnCount() => GetVisibleLanguageCount() + 2;
+        // 列の並び: 0 = Key、1..言語数 = 表示中の言語、言語数 + 1 = Comment、その右が詳細列（詳細アイコン）。
+        // 詳細列は選択できる操作欄であり、編集・コピー・貼り付けの対象ではない。
+        private int GetEditableColumnCount() => GetVisibleLanguageCount() + 2; // 言語列に Key と Comment の2列を足す
+
+        private int GetDetailsColumnIndex() => GetEditableColumnCount();
+
+        private bool IsDetailsColumnSelected() => _selectedCol == GetDetailsColumnIndex();
+
+        // hjkl・矢印キーで移動できる列数。詳細列まで含む。
+        private int GetNavigableColumnCount() => GetDetailsColumnIndex() + 1;
 
         private int GetVisibleLanguageCount()
         {
@@ -961,15 +975,18 @@ namespace Localo.Editor
                 : new List<SystemLanguage> { LocalizationLanguages.BaseLanguage };
         }
 
-        private void RestorePersistedAssets()
+        /// <summary>
+        /// Resolves the settings from the fixed runtime path instead of a remembered GUID, so an
+        /// already set-up project never asks for Quick Setup again after the Editor restarts.
+        /// </summary>
+        private void LoadSettingsAndRestoreSelectedTable()
         {
-            _settings = LoadPersistedAsset<LocalizationSettings>(PersistedSettingsGuidKey);
-            if (_settings == null || !IsRuntimeSettingsAsset(_settings))
+            _settings = AssetDatabase.LoadAssetAtPath<LocalizationSettings>(SettingsAssetPath);
+            if (_settings == null)
             {
-                _settings = null;
+                // Keep the remembered table: right after the Editor starts the asset may just not be
+                // loadable yet, and RestoreSettingsWhenAvailable retries on later Layout passes.
                 _table = null;
-                SavePersistedSettings();
-                SavePersistedTable();
                 return;
             }
 
@@ -979,9 +996,14 @@ namespace Localo.Editor
             RecomputeFilteredIndices();
         }
 
-        private void SavePersistedSettings()
+        /// <summary>
+        /// Picks up the settings asset once it becomes loadable (late import after startup, or created
+        /// outside this window). Layout-only, like other structural changes (contract item 1).
+        /// </summary>
+        private void RestoreSettingsWhenAvailable()
         {
-            SavePersistedAsset(PersistedSettingsGuidKey, _settings);
+            LoadSettingsAndRestoreSelectedTable();
+            if (_settings != null) InitLanguageOrderList();
         }
 
         private void SavePersistedTable()

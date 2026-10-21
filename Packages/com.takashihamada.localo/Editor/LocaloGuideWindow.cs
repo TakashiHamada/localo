@@ -8,13 +8,16 @@ namespace Localo.Editor
     /// </summary>
     public sealed class LocaloGuideWindow : EditorWindow
     {
+        private static readonly Vector2 WindowMinSize = new Vector2(480f, 400f);
+        private const float ShortcutKeyColumnWidth = 160f;
+
         private Vector2 _scrollPosition;
 
         public static void Open()
         {
             var window = GetWindow<LocaloGuideWindow>();
             window.titleContent = new GUIContent("Localo Guide");
-            window.minSize = new Vector2(480f, 400f);
+            window.minSize = WindowMinSize;
             window.Show();
         }
 
@@ -59,8 +62,8 @@ namespace Localo.Editor
                     EditorGUILayout.LabelField(
                         "Translationタブでシートごとの文章の種類（Text Type）と翻訳方針を編集できます。\n" +
                         "シートは文章の種類と声（話者・口調）の単位です。話者や基本の口調が変わる場合は、シートを分けてください。\n" +
-                        "Tableの各行のCommentの右にあるメモアイコンで、AIが調査したその行の場面（Scene）と器（Display Space）を確認・修正できます。\n" +
-                        "左右キーまたはh/lでメモアイコンまで移動すると、自動でスクロールします。Enterまたはiで詳細を開きます。\n" +
+                        "Tableの各行のCommentの右にある詳細アイコンで、AIが調査したその行の場面（Scene）と器（Display Space）を確認・修正できます。\n" +
+                        "左右キーまたはh/lで詳細アイコンまで移動すると、自動でスクロールします。Enterまたはiで詳細を開きます。\n" +
                         "Commentは人間が書くメモです。AIは読むだけで編集しません。\n" +
                         "Translationタブでシートを選び、Translator Lockで翻訳者担当の言語にチェックすると、列全体をAIの上書きから保護します。表では■を付けて表示します。\n" +
                         "翻訳者担当の入力済みの訳は、ほかの文章を訳すお手本としてJSONに含まれます。人間はTableで文章を修正できます。\n" +
@@ -84,9 +87,9 @@ namespace Localo.Editor
                     EditorGUILayout.LabelField("-- Keyboard Shortcuts --", EditorStyles.boldLabel);
                     DrawShortcutRow("h / j / k / l", "左・下・上・右へ移動します。矢印キーでも操作できます。");
                     DrawShortcutRow("Shift + movement", "移動先まで選択範囲を広げます。");
-                    DrawShortcutRow("i", "選択したセルの編集を開始します。メモアイコンでは詳細を開きます。");
+                    DrawShortcutRow("i", "選択したセルの編集を開始します。詳細アイコンでは詳細を開きます。");
                     DrawShortcutRow("<br>", "セル内の改行を表します。");
-                    DrawShortcutRow("Enter / Esc", "編集中の内容を確定して通常の選択に戻ります。メモアイコンを選択中はEnterで詳細を開きます。");
+                    DrawShortcutRow("Enter / Esc", "編集中の内容を確定して通常の選択に戻ります。詳細アイコンを選択中はEnterで詳細を開きます。");
                     DrawShortcutRow("Esc Esc", "検索を解除して表にフォーカスを戻します。");
                     DrawShortcutRow("x / Delete / Backspace", "選択したセルの内容を消去します。行は削除しません。");
                     DrawShortcutRow("o", "現在の行の下に新しい行を挿入します。");
@@ -111,7 +114,7 @@ namespace Localo.Editor
         {
             using (new EditorGUILayout.HorizontalScope())
             {
-                EditorGUILayout.LabelField(keys, EditorStyles.boldLabel, GUILayout.Width(160f));
+                EditorGUILayout.LabelField(keys, EditorStyles.boldLabel, GUILayout.Width(ShortcutKeyColumnWidth));
                 EditorGUILayout.LabelField(description, EditorStyles.wordWrappedLabel);
             }
         }

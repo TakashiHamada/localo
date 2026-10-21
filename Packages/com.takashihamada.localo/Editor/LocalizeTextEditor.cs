@@ -18,7 +18,7 @@ namespace Localo.Editor
     {
         private static readonly GUIContent TestLanguageLabel = new GUIContent(
             "Test Language",
-            "Language used for the Edit Mode preview while Use Test Language is ON. Ignored in Play Mode.");
+            "Use Test LanguageがONのとき、Edit Modeのプレビューに使う言語です。Play Modeには影響しません。");
         private static readonly SystemLanguage[] BaseLanguageOnly = { LocalizationLanguages.BaseLanguage };
 
         private string[] _languageDisplayNames = Array.Empty<string>();
@@ -57,8 +57,8 @@ namespace Localo.Editor
             if (settings == null)
             {
                 EditorGUILayout.HelpBox(
-                    "LocalizationSettings not found (run Quick Setup on Localo's Setup tab). " +
-                    "Falling back to the base language only.",
+                    "LocalizationSettingsが見つかりません。LocaloのSetupタブでQuick Setupを実行してください。" +
+                    "現在は基準言語のみを表示しています。",
                     MessageType.Warning);
             }
 
