@@ -13,7 +13,7 @@ Treat `Packages/com.takashihamada.localo/` as the installed tool and `Assets/Loc
 2. Inspect `Assets/LocaloAssets/Resources/LocalizationSettings.asset`, registered tables, and affected scenes or prefabs before editing.
 3. Preserve existing keys, language columns, and table registrations unless the task explicitly changes them.
 4. Use Unity's asset and scene APIs for serialized Unity files. Respect unsaved human changes.
-5. UIのボタン・タブ・項目名・見出しは英語に統一する。ツールチップ・補足説明・ダイアログ本文・Guideの説明文は日本語にする。翻訳データや人間のコメントの言語は変更しない。
+5. UIのボタン・タブ・項目名・見出しは英語に統一する。ツールチップ・補足説明・ダイアログ本文・Guideウィンドウの説明文は日本語にする。翻訳データや人間のコメントの言語は変更しない。
 6. ツール側の説明文は、入力する情報の役割や操作方法を汎用的に説明する。特定の作品・キャラクター・世界設定・操作機器を前提とする具体例を入れない。利用者が登録した翻訳文・方針・調査結果・用語・コメントは、このルールを理由に書き換えない。
 
 ## Data contract

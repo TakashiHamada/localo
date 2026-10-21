@@ -3,15 +3,26 @@ using UnityEngine;
 
 namespace Localo.Editor
 {
-    public sealed partial class LocaloEditorWindow
+    /// <summary>
+    /// Localoの使い方とショートカットを表示するウィンドウ。メインウィンドウのツールバー右端の「?」ボタンから開く。
+    /// </summary>
+    public sealed class LocaloGuideWindow : EditorWindow
     {
-        private Vector2 _guideScrollPosition;
+        private Vector2 _scrollPosition;
 
-        private void DrawGuideTab()
+        public static void Open()
         {
-            using (var scroll = new EditorGUILayout.ScrollViewScope(_guideScrollPosition))
+            var window = GetWindow<LocaloGuideWindow>();
+            window.titleContent = new GUIContent("Localo Guide");
+            window.minSize = new Vector2(480f, 400f);
+            window.Show();
+        }
+
+        private void OnGUI()
+        {
+            using (var scroll = new EditorGUILayout.ScrollViewScope(_scrollPosition))
             {
-                _guideScrollPosition = scroll.scrollPosition;
+                _scrollPosition = scroll.scrollPosition;
 
                 EditorGUILayout.LabelField("Localo Guide", EditorStyles.boldLabel);
                 EditorGUILayout.HelpBox(
@@ -46,7 +57,7 @@ namespace Localo.Editor
                 {
                     EditorGUILayout.LabelField("-- Translation & Details --", EditorStyles.boldLabel);
                     EditorGUILayout.LabelField(
-                        "Translationタブでシートごとの文章の種類（Text Type）と翻訳方針、共通用語集を編集できます。\n" +
+                        "Translationタブでシートごとの文章の種類（Text Type）と翻訳方針を編集できます。\n" +
                         "シートは文章の種類と声（話者・口調）の単位です。話者や基本の口調が変わる場合は、シートを分けてください。\n" +
                         "Tableの各行のCommentの右にあるメモアイコンで、AIが調査したその行の場面（Scene）と器（Display Space）を確認・修正できます。\n" +
                         "左右キーまたはh/lでメモアイコンまで移動すると、自動でスクロールします。Enterまたはiで詳細を開きます。\n" +
@@ -54,6 +65,16 @@ namespace Localo.Editor
                         "Translationタブでシートを選び、Translator Lockで翻訳者担当の言語にチェックすると、列全体をAIの上書きから保護します。表では■を付けて表示します。\n" +
                         "翻訳者担当の入力済みの訳は、ほかの文章を訳すお手本としてJSONに含まれます。人間はTableで文章を修正できます。\n" +
                         "TranslationタブのCopy All Context as JSONで、文章の種類・方針・用語集・コメント・場面・器をまとめてAIに渡せます。",
+                        EditorStyles.wordWrappedLabel);
+                }
+
+                EditorGUILayout.Space(8f);
+                using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+                {
+                    EditorGUILayout.LabelField("-- Glossary --", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField(
+                        "Glossaryタブで、全シート共通の用語集を編集できます。\n" +
+                        "固有名詞や共通用語について、原文の表記・各言語の正式表記・意味や表記上の注意点を登録します。登録した内容は全シートの翻訳で参照します。",
                         EditorStyles.wordWrappedLabel);
                 }
 

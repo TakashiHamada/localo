@@ -2,7 +2,7 @@
 // LocaloEditorWindow.cs — main entry point for Localo
 // =============================================================================
 // Launched from Window/Localo.
-// Setup、Table、Translation、Guideの各タブを切り替える。
+// Setup、Table、Translation、Glossaryの各タブを切り替える。ツールバー右端の「?」ボタンでGuideウィンドウを開く。
 // This file owns window state and OnGUI dispatch, plus the Vim-like keybinding
 // event handling core. Per-tab drawing lives in
 // LocaloEditorWindow.SetupTab.cs / LocaloEditorWindow.TableTab.cs.
@@ -86,7 +86,10 @@ namespace Localo.Editor
         private static readonly Color WarningSectionBackground = new Color(1f, 0.78f, 0.18f, 0.18f);
         private static readonly Color ActiveSearchBackground = new Color(1f, 0.88f, 0.18f, 0.28f);
 
-        private static readonly string[] ToolbarLabels = { "Setup", "Table", "Translation", "Guide" };
+        private static readonly string[] ToolbarLabels = { "Setup", "Table", "Translation", "Glossary" };
+        private const float GuideButtonWidth = 24f;
+        private static readonly GUIContent GuideButtonContent =
+            new GUIContent("?", "Localoの使い方とショートカットを別ウィンドウで表示します。");
 
         // Overlaid on top of the Key cell's normal/selected background (not replacing it) so a
         // duplicate key stays visibly red whether or not the cell is currently selected.
@@ -108,7 +111,7 @@ namespace Localo.Editor
         private static readonly PropertyInfo GuiUtilityCompositionStringProperty =
             typeof(GUIUtility).GetProperty("compositionString", BindingFlags.Static | BindingFlags.NonPublic);
 
-        private enum Tab { Setup, Table, Translation, Guide }
+        private enum Tab { Setup, Table, Translation, Glossary }
         private enum EditorMode { Normal, Insert }
         private enum PendingOpType { None, InsertRowBelow, DeleteRow }
 
@@ -260,15 +263,28 @@ namespace Localo.Editor
                 case Tab.Translation:
                     DrawTranslationTab();
                     break;
-                case Tab.Guide:
-                    DrawGuideTab();
+                case Tab.Glossary:
+                    DrawGlossaryTab();
                     break;
             }
         }
 
         private void DrawToolbar()
         {
-            var newTab = (Tab)GUILayout.Toolbar((int)_currentTab, ToolbarLabels);
+            Tab newTab;
+            bool openGuide;
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                newTab = (Tab)GUILayout.Toolbar((int)_currentTab, ToolbarLabels);
+                openGuide = GUILayout.Button(GuideButtonContent, EditorStyles.miniButton, GUILayout.Width(GuideButtonWidth));
+            }
+            if (openGuide)
+            {
+                if (_mode == EditorMode.Insert)
+                    CommitInsertAndReturnToNormal();
+                LocaloGuideWindow.Open();
+                GUIUtility.ExitGUI();
+            }
             if (newTab != _currentTab)
             {
                 if (_mode == EditorMode.Insert)

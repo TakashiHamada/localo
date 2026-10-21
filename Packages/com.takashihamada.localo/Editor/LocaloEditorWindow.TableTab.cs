@@ -200,7 +200,7 @@ namespace Localo.Editor
                     Rect clearRect = new Rect(searchRect.xMax - 50f, searchRect.y, 50f, searchRect.height);
                     Rect fieldRect = new Rect(searchRect.x, searchRect.y, Mathf.Max(40f, clearRect.x - searchRect.x - 4f), searchRect.height);
 
-                    // No "Search (/)" label — the field itself, plus the Guide tab's shortcut list,
+                    // No "Search (/)" label — the field itself, plus the Guide window's shortcut list,
                     // communicates its purpose without permanently spending screen width on a label.
                     GUI.SetNextControlName(SearchControlName);
                     string newSearch = EditorGUI.TextField(fieldRect, _searchText);
