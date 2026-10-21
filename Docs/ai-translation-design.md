@@ -1,11 +1,35 @@
 # Localo AI翻訳拡張 設計書
 
 - ステータス：ドラフト（レビュー待ち）
-- 更新日：2026-10-21（第4版）
+- 更新日：2026-10-21（第5版）
   - 第2版：セルの種類を3つに簡素化した
   - 第3版：原文ハッシュを「原文の控え」に置き換え、確認済みにする操作を足した。行ごとの話者列、キャラクター設定の書式、Tableタブの画面案を足した
   - 第4版：原文に近い長さと文脈を保つ共通方針を追加。翻訳者の保護指定をセル単位からシートごとの言語列単位に変更した
+  - 第5版：文脈をシート（文章の種類・声）と行（場面・器）の2段構成に整理した
 - 元にした資料：「Unity多言語管理ツール AI翻訳機能・設計メモ」（以下「構想」。§番号は構想の節番号）
+
+---
+
+## レビューでの追加決定：シートと行の文脈の2段構成
+
+この決定は、後の「コメント欄とAIの調査結果」の節にある「シートの性格付けは自由文とし、文章の種類を個別の必須項目にしない」と、行の `aiResearch` 1欄の構成より優先する。本文の行ごとの話者列（§3.3.1）と `characters.md`（§3.7）は採用しない。
+
+文脈の要素はできるだけ少なくし、「声・場面・器」の3つで考える。声はシート、場面と器は行が持つ。
+
+- **シート（大きい文脈）**：`LocalizationTable.textType`（enum `LocaloTextType`）と、自由記述の `translationInstructions`。
+  - 文章の種類はTranslationタブで選ぶ。選択肢は、未指定・操作（UI Controls）・システム（System）・説明（Description）・キャラクターのセリフ（Dialogue）・世界の中の言葉（In-World Text）・名前（Names）・ゲームの外（Out-of-Game）。
+  - 話者・性格・口調などの「声」は翻訳方針の自由記述に書く。
+  - シートは文章の種類と声の単位であり、1つのシートに複数の話者を混ぜない。話者や基本の口調が変わる場合はシートを分ける。GuideとTranslationタブにもこの旨を表示する。
+- **行（細かい文脈）**：`LocalizationRow.aiScene`（場面）と `aiDisplaySpace`（器）。
+  - 場面は、どこで、何がきっかけで、誰に向けて表示されるか。前後の文章も含む。
+  - 器は、表示する部品・幅・行数・フォントサイズ・自動縮小・表示時間など。
+  - どちらもAIがキーをもとに使用箇所を調査して書き、人間は確認だけ行う。調査手順は配布用Skillに書く。
+  - 旧 `aiResearch` は `[FormerlySerializedAs]` により `aiScene` として読み込む。
+- 人間のコメント（`comment`）は今までどおり人間だけが書く。
+- 行の詳細ウィンドウ（Localo Details）には、Scene と Display Space の2つの入力欄だけを置く。シートの方針・人間のコメント・行単位のJSONコピーボタンは表示しない。どの行かは、ウィンドウのタブ名にキーを出して示す。JSONは Translation タブの Copy All Context as JSON か、`ExportRowToString` で取得する。
+- 変数（プレースホルダー）や用語は、文章と用語集からツールやAIが拾えるため、行の項目にしない。
+- 保存APIは `LocaloTranslationContext.SetRowContext(table, key, scene, displaySpace)`。`null` を渡した項目は変更しない。`SetResearch` は場面を保存する互換APIとして `[Obsolete]` で残す。
+- コンテキストJSONはschema version 3。各シートに `textType`、各行に `aiScene` と `aiDisplaySpace` を出す（`aiResearch` はなくなる）。CSVの列構成は変えない。
 
 ---
 

@@ -573,7 +573,7 @@ namespace Localo.Editor
         {
             int realRow = GetSelectedRealRowIndex();
             if (_table == null || realRow < 0 || realRow >= _table.rows.Count) return;
-            LocaloRowDetailsWindow.Open(_settings, _table, _table.rows[realRow].key);
+            LocaloRowDetailsWindow.Open(_table, _table.rows[realRow].key);
         }
 
         /// <summary>

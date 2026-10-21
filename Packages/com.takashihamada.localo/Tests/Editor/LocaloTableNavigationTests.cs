@@ -22,7 +22,7 @@ namespace Localo.Tests
             _window = ScriptableObject.CreateInstance<LocaloEditorWindow>();
             _settings = ScriptableObject.CreateInstance<LocalizationSettings>();
             _table = ScriptableObject.CreateInstance<LocalizationTable>();
-            _table.rows.Add(new LocalizationRow { key = "KEY", comment = "human memo", aiResearch = "research" });
+            _table.rows.Add(new LocalizationRow { key = "KEY", comment = "human memo", aiScene = "scene", aiDisplaySpace = "display space" });
             SetField("_settings", _settings);
             SetField("_table", _table);
             SetField("_filteredIndices", new List<int> { 0 });
@@ -64,7 +64,8 @@ namespace Localo.Tests
             Call("WriteCellValue", 0, detailsColumn, "replacement");
 
             Assert.That(_table.rows[0].comment, Is.EqualTo("human memo"));
-            Assert.That(_table.rows[0].aiResearch, Is.EqualTo("research"));
+            Assert.That(_table.rows[0].aiScene, Is.EqualTo("scene"));
+            Assert.That(_table.rows[0].aiDisplaySpace, Is.EqualTo("display space"));
         }
 
         [Test]
@@ -96,7 +97,8 @@ namespace Localo.Tests
             Assert.That(_table.rows, Has.Count.EqualTo(1));
             Assert.That(_table.rows[0].key, Is.EqualTo("KEY"));
             Assert.That(_table.rows[0].comment, Is.EqualTo("human memo"));
-            Assert.That(_table.rows[0].aiResearch, Is.EqualTo("research"));
+            Assert.That(_table.rows[0].aiScene, Is.EqualTo("scene"));
+            Assert.That(_table.rows[0].aiDisplaySpace, Is.EqualTo("display space"));
         }
 
         private object Call(string name, params object[] arguments) =>

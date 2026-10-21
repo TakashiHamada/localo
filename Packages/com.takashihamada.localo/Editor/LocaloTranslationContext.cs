@@ -8,7 +8,7 @@ using UnityEngine;
 namespace Localo.Editor
 {
     /// <summary>
-    /// AIに渡す翻訳情報の書き出しと、調査結果だけを保存する入口。
+    /// AIに渡す翻訳情報の書き出しと、行の場面・器だけを保存する入口。
     /// </summary>
     public static class LocaloTranslationContext
     {
@@ -32,20 +32,32 @@ namespace Localo.Editor
         }
 
         /// <summary>
-        /// コメント・翻訳文・シートの方針を変更せず、指定キーの調査結果だけを保存する。
+        /// コメント・翻訳文・シートの設定を変更せず、指定キーの場面と器だけを保存する。nullを渡した項目は変更しない。
         /// </summary>
-        public static void SetResearch(LocalizationTable table, string key, string research,
+        public static void SetRowContext(LocalizationTable table, string key, string scene, string displaySpace,
             LocalizationSettings settings = null)
         {
             settings = ResolveSettings(settings);
             RequireRegisteredTable(settings, table);
             LocalizationRow row = FindUniqueRow(table, key);
-            string value = research ?? string.Empty;
-            if (row.aiResearch == value) return;
-            Undo.RecordObject(table, "Update AI Research");
-            row.aiResearch = value;
+            bool sceneChanged = scene != null && row.aiScene != scene;
+            bool displaySpaceChanged = displaySpace != null && row.aiDisplaySpace != displaySpace;
+            if (!sceneChanged && !displaySpaceChanged) return;
+            Undo.RecordObject(table, "Update Row Context");
+            if (sceneChanged) row.aiScene = scene;
+            if (displaySpaceChanged) row.aiDisplaySpace = displaySpace;
             EditorUtility.SetDirty(table);
             AssetDatabase.SaveAssetIfDirty(table);
+        }
+
+        /// <summary>
+        /// 旧API。調査結果を場面として保存する。
+        /// </summary>
+        [Obsolete("SetRowContextを使ってください。調査結果は場面（aiScene）として保存されます。")]
+        public static void SetResearch(LocalizationTable table, string key, string research,
+            LocalizationSettings settings = null)
+        {
+            SetRowContext(table, key, research ?? string.Empty, null, settings);
         }
 
         private static LocalizationSettings ResolveSettings(LocalizationSettings settings)
@@ -107,6 +119,7 @@ namespace Localo.Editor
             {
                 table = table.name,
                 assetPath = AssetDatabase.GetAssetPath(table),
+                textType = table.textType.ToString(),
                 translationInstructions = table.translationInstructions ?? string.Empty,
                 translatorLanguages = (table.translatorLanguages ?? new List<SystemLanguage>())
                     .Select(language => language.ToString()).Distinct().ToList()
@@ -119,7 +132,8 @@ namespace Localo.Editor
                     key = row.key ?? string.Empty,
                     translations = CreateTranslations(row.translations),
                     humanComment = row.comment ?? string.Empty,
-                    aiResearch = row.aiResearch ?? string.Empty
+                    aiScene = row.aiScene ?? string.Empty,
+                    aiDisplaySpace = row.aiDisplaySpace ?? string.Empty
                 });
             }
             return context;
@@ -134,9 +148,12 @@ namespace Localo.Editor
         [Serializable]
         private sealed class ProjectContext
         {
-            public int schemaVersion = 2;
-            public string instructions = "用語の正式表記はglossaryを参照。translationInstructionsはシートの翻訳方針。" +
-                "humanCommentは人間のメモでありAIは変更禁止。aiResearchは調査結果で、推測・不明点を含む可能性がある。" +
+            public int schemaVersion = 3;
+            public string instructions = "用語の正式表記はglossaryを参照。" +
+                "各シートのtextTypeはシートに並ぶ文章の種類、translationInstructionsは話者や口調などシートの声を含む翻訳方針で、行の大きい文脈になる。" +
+                "各行のaiSceneは表示される場面、aiDisplaySpaceは表示される器（部品・幅・行数・表示時間など）で、シートの文脈の上に乗る細かい文脈である。" +
+                "aiDisplaySpaceは訳の長さを判断する材料にする。" +
+                "humanCommentは人間のメモでありAIは変更禁止。aiSceneとaiDisplaySpaceはAIの調査結果で、推測・不明点を含む可能性がある。" +
                 "調査結果で人間の指示を上書きしない。" +
                 "各シートのtranslatorLanguagesは翻訳者担当の言語。指定された列は全行・空欄・新規行もAIは一切変更しない。ロック設定もAIが解除しない。" +
                 "translatorExamplesは全シートから集めたお手本であり変更対象ではない。translatorLanguagesに含まれる言語の入力済みの訳を、" +
@@ -166,6 +183,7 @@ namespace Localo.Editor
         {
             public string table;
             public string assetPath;
+            public string textType;
             public string translationInstructions;
             public List<string> translatorLanguages = new List<string>();
             public List<RowContext> rows = new List<RowContext>();
@@ -177,7 +195,8 @@ namespace Localo.Editor
             public string key;
             public List<TranslationContext> translations;
             public string humanComment;
-            public string aiResearch;
+            public string aiScene;
+            public string aiDisplaySpace;
         }
 
         [Serializable]

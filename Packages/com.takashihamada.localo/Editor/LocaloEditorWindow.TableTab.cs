@@ -412,9 +412,9 @@ namespace Localo.Editor
                     _selectedCellRect = rect;
             }
             var content = new GUIContent(EditorGUIUtility.IconContent("TextAsset Icon").image,
-                string.IsNullOrEmpty(row.aiResearch)
-                    ? "AIの調査結果はまだありません。クリック、または選択してEnterで行の詳細を開きます。"
-                    : "クリック、または選択してEnterで、この行のAI調査結果を確認・修正できます。");
+                string.IsNullOrEmpty(row.aiScene) && string.IsNullOrEmpty(row.aiDisplaySpace)
+                    ? "AIが調査した場面と器はまだありません。クリック、または選択してEnterで行の詳細を開きます。"
+                    : "クリック、または選択してEnterで、この行の場面と器を確認・修正できます。");
             if (GUI.Button(new Rect(rect.x + 2f, rect.y + 1f, rect.width - 4f, RowHeight - 2f),
                     content, EditorStyles.miniButton))
             {

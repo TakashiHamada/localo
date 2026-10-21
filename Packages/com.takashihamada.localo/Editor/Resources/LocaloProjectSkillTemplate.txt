@@ -24,14 +24,28 @@ Treat `Packages/com.takashihamada.localo/` as the installed tool and `Assets/Loc
 - Resolution is requested language, then English. Missing keys return the key; an explicitly blank base translation stays blank.
 - Store intentional line breaks as `<br>`.
 - 各行の `comment`（コメント欄）は人間が書くメモ。AIは翻訳の参考として読むだけにし、新規作成・追記・変更・削除・自動補完を行わない。空欄もそのまま残す。
-- AIが調査した使用箇所や文脈は、コメント欄に書かない。専用の調査結果欄が利用できる場合はそこに保存し、未実装なら作業報告で返す。人間のメモと調査結果を自動で移動・統合しない。
-- 調査結果には、分かる範囲で表示場所・表示条件・表示時間・話者・根拠を記す。確認できた事実と推測を区別し、不明点は不明として残す。
+- AIが調査した行の文脈は、コメント欄に書かない。行の `aiScene`（場面）と `aiDisplaySpace`（器）に保存する。人間のメモと調査結果を自動で移動・統合しない。
 
 ## 翻訳の文脈と用語集
 
-- 「Translation」タブの `LocalizationTable.translationInstructions` がシート全体の自由記述の翻訳方針。共通用語集は `LocalizationSettings.glossary` に保存される。用語の正式表記は用語集を優先する。
-- 翻訳前に `Localo.Editor.LocaloTranslationContext.ExportToString()`、または `ExportRowToString(table, key)` を呼ぶ。方針・用語集・翻訳文・人間のコメント・AI調査結果が区別されたJSONを読み、翻訳に反映する。調査結果が空・不明なら必要に応じて使用箇所を調べる。
-- AIの調査結果は `LocaloTranslationContext.SetResearch(table, key, research)` で保存する。このAPIは行の `aiResearch` だけを更新し、コメント欄・翻訳文・シートの方針を変更しない。人間はTableの行ごとのCommentの右にあるメモアイコンから調査結果を確認・修正できる。
+文脈は2段で持つ。シートが大きい文脈、行が細かい文脈を持つ。
+
+- シート：「Translation」タブの `LocalizationTable.textType`（文章の種類）と `translationInstructions`（話者・性格・口調などシートの声を含む自由記述の翻訳方針）。シートは文章の種類と声の単位であり、1つのシートに複数の話者を混ぜない。話者や基本の口調が変わる文章を見つけたら、シートを分けるよう人間に提案する。AIはシートの設定を変更しない。
+- 行：`LocalizationRow.aiScene`（場面：どこで、何がきっかけで、誰に向けて表示されるか）と `aiDisplaySpace`（器：表示する部品・幅・行数・フォントサイズ・自動縮小・表示時間）。どちらもAIがキーをもとに調査して書き、人間は確認だけ行う。
+- 共通用語集は `LocalizationSettings.glossary` に保存される。用語の正式表記は用語集を優先する。
+- 翻訳前に `Localo.Editor.LocaloTranslationContext.ExportToString()`、または `ExportRowToString(table, key)` を呼ぶ。文章の種類・方針・用語集・翻訳文・人間のコメント・場面・器が区別されたJSONを読み、翻訳に反映する。場面や器が空・不明なら、下の手順で調査する。
+- 場面と器は `LocaloTranslationContext.SetRowContext(table, key, scene, displaySpace)` で保存する。`null` を渡した項目は変更しない。このAPIはコメント欄・翻訳文・シートの設定を変更しない。旧APIの `SetResearch` は使わない。人間はTableの行ごとのCommentの右にあるメモアイコンから場面と器を確認・修正できる。
+
+### 行の文脈（場面と器）の調査手順
+
+人間がキーを指定して調査を依頼したときに使う。
+
+1. `ExportRowToString(table, key)` で、シートの `textType`・`translationInstructions` と、既存の場面・器・人間のコメントを読む。
+2. キーの使用箇所を探す。シーンとプレハブでは `LocalizeTextBase` 派生コンポーネントの `localizationKey`、コードでは `GetLocalizedString("KEY")` や `SetKey("KEY")` を検索する。キーが文字列の組み立てで作られている場合も考慮する。
+3. 場面を調べる：どの画面・シーンか、表示のきっかけと条件、誰に向けた文か、前後に表示される文章。
+4. 器を調べる：表示に使う部品、RectTransformのサイズ、フォントサイズ、Auto Size、折り返し・Overflowの設定、想定される行数、表示時間（自動で消える表示や字幕など）。
+5. 確認できた事実と推測を区別し、根拠（アセットのパス、コードの箇所）を添える。確認できないことは不明と書く。使用箇所が複数あれば、それぞれを書く。
+6. `SetRowContext` で保存し、調査したキーと要点を作業報告に書く。
 
 ## 翻訳の長さと文脈
 

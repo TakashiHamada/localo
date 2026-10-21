@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Localo.Runtime
 {
@@ -12,7 +13,10 @@ namespace Localo.Runtime
     public class LocalizationTable : ScriptableObject
     {
         [Header("-- Translation Context --")]
-        [Tooltip("AIに渡すシート全体の翻訳方針。使用場面、話者、性格、口調などを自由に記述します。")]
+        [Tooltip("このシートに並ぶ文章の種類。シートの大きい文脈としてAIに渡します。")]
+        public LocaloTextType textType = LocaloTextType.Unspecified;
+
+        [Tooltip("AIに渡すシート全体の翻訳方針。話者、性格、口調などシートの声を自由に記述します。")]
         [TextArea(4, 12)]
         public string translationInstructions = string.Empty;
 
@@ -84,6 +88,21 @@ namespace Localo.Runtime
     }
 
     /// <summary>
+    /// Kind of text a sheet holds. Values are serialized, so never renumber them.
+    /// </summary>
+    public enum LocaloTextType
+    {
+        Unspecified = 0,
+        Interface = 1,
+        SystemMessage = 2,
+        Description = 3,
+        Dialogue = 4,
+        InWorld = 5,
+        Name = 6,
+        External = 7
+    }
+
+    /// <summary>
     /// Data for a single translation key.
     /// </summary>
     [Serializable]
@@ -98,9 +117,14 @@ namespace Localo.Runtime
         [Tooltip("人間が書く翻訳メモ。AIは読むだけにし、編集しません。")]
         public string comment = string.Empty;
 
-        [Tooltip("AIが調査した使用状況や文脈。事実・推測・不明点と根拠を記録します。")]
-        [TextArea(6, 20)]
-        public string aiResearch = string.Empty;
+        [Tooltip("AIが調査した場面。どこで、何がきっかけで、誰に向けて表示されるかを、根拠とともに記録します。")]
+        [FormerlySerializedAs("aiResearch")]
+        [TextArea(4, 16)]
+        public string aiScene = string.Empty;
+
+        [Tooltip("AIが調査した器。表示する部品、幅・行数・フォントサイズ・自動縮小、表示時間などを、根拠とともに記録します。")]
+        [TextArea(4, 16)]
+        public string aiDisplaySpace = string.Empty;
     }
 
     /// <summary>

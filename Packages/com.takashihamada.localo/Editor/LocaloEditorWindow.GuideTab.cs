@@ -46,13 +46,14 @@ namespace Localo.Editor
                 {
                     EditorGUILayout.LabelField("-- Translation & Details --", EditorStyles.boldLabel);
                     EditorGUILayout.LabelField(
-                        "Translationタブでシートごとの翻訳方針と共通用語集を編集できます。\n" +
-                        "Tableの各行のCommentの右にあるメモアイコンで、AIが調査したコンテクストを確認・修正できます。\n" +
+                        "Translationタブでシートごとの文章の種類（Text Type）と翻訳方針、共通用語集を編集できます。\n" +
+                        "シートは文章の種類と声（話者・口調）の単位です。話者や基本の口調が変わる場合は、シートを分けてください。\n" +
+                        "Tableの各行のCommentの右にあるメモアイコンで、AIが調査したその行の場面（Scene）と器（Display Space）を確認・修正できます。\n" +
                         "左右キーまたはh/lでメモアイコンまで移動すると、自動でスクロールします。Enterまたはiで詳細を開きます。\n" +
                         "Commentは人間が書くメモです。AIは読むだけで編集しません。\n" +
                         "Translationタブでシートを選び、Translator Lockで翻訳者担当の言語にチェックすると、列全体をAIの上書きから保護します。表では■を付けて表示します。\n" +
                         "翻訳者担当の入力済みの訳は、ほかの文章を訳すお手本としてJSONに含まれます。人間はTableで文章を修正できます。\n" +
-                        "Copy All Context as JSONまたはCopy Row Context as JSONで、方針・用語集・コメント・調査結果をまとめてAIに渡せます。",
+                        "TranslationタブのCopy All Context as JSONで、文章の種類・方針・用語集・コメント・場面・器をまとめてAIに渡せます。",
                         EditorStyles.wordWrappedLabel);
                 }
 
