@@ -90,7 +90,7 @@ namespace Localo.Tests
                 var exported = JsonUtility.FromJson<ProjectExport>(
                     LocaloTranslationContext.ExportRowToString(_table, "HELLO", _settings));
 
-                Assert.That(exported.schemaVersion, Is.EqualTo(3));
+                Assert.That(exported.schemaVersion, Is.EqualTo(4));
                 Assert.That(exported.tables, Has.Count.EqualTo(1));
                 Assert.That(exported.tables[0].translatorLanguages, Is.EqualTo(new[] { "French" }));
                 Assert.That(exported.translatorExamples, Has.Count.EqualTo(1));
@@ -104,6 +104,99 @@ namespace Localo.Tests
                 Assert.That(examples.rows[0].translations[1].text, Is.EqualTo("Hello"));
             }
             finally { Object.DestroyImmediate(translatorTable); }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Export_IncludesEnabledGuidelinesFromThePreviewResource(bool singleRow)
+        {
+            _settings.enabledLanguages.Add(SystemLanguage.Japanese);
+            _settings.enabledLanguages.Add(SystemLanguage.Korean);
+            _settings.enabledLanguages.Add(SystemLanguage.Korean);
+            TextAsset resource = AssetDatabase.LoadAssetAtPath<TextAsset>(
+                "Packages/com.takashihamada.localo/Editor/Resources/LocaloLanguageGuidelines.json");
+            Assert.That(resource, Is.Not.Null);
+            var preview = JsonUtility.FromJson<GuidelinesExport>(resource.text);
+
+            string json = singleRow
+                ? LocaloTranslationContext.ExportRowToString(_table, "HELLO", _settings)
+                : LocaloTranslationContext.ExportToString(_settings);
+            var exported = JsonUtility.FromJson<ProjectExport>(json);
+
+            Assert.That(exported.schemaVersion, Is.EqualTo(4));
+            Assert.That(exported.languageGuidelines.commonPoints, Is.EqualTo(preview.commonPoints));
+            Assert.That(exported.languageGuidelines.reviewedOn, Is.EqualTo(preview.reviewedOn));
+            Assert.That(exported.languageGuidelines.languages.ConvertAll(guide => guide.language),
+                Is.EqualTo(new[] { "English", "Korean" }));
+            LanguageGuideExport korean = exported.languageGuidelines.languages[1];
+            Assert.That(korean.locale, Is.EqualTo("ko-KR"));
+            Assert.That(korean.points, Is.EqualTo(preview.languages.Find(guide => guide.language == "Korean").points));
+            Assert.That(korean.sources, Is.Not.Empty);
+            Assert.That(_row.comment, Is.EqualTo("人間のメモを保持"));
+            Assert.That(_table.translationInstructions, Is.EqualTo("ウイリスのセリフ。軽い口調。"));
+        }
+
+        [Test]
+        public void Export_GuidelineTargetsFilterWithoutRemovingSheetContext()
+        {
+            _settings.enabledLanguages.Add(SystemLanguage.Korean);
+            _settings.enabledLanguages.Add(SystemLanguage.French);
+            var exported = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportRowToString(
+                _table, "HELLO", _settings, new[] { SystemLanguage.Korean }));
+
+            Assert.That(exported.languageGuidelines.languages.ConvertAll(guide => guide.language),
+                Is.EqualTo(new[] { "Korean" }));
+            Assert.That(exported.tables[0].rows[0].translations[0].text, Is.EqualTo("やあ！"));
+            Assert.Throws<ArgumentException>(() => LocaloTranslationContext.ExportToString(
+                _settings, new[] { SystemLanguage.German }));
+        }
+
+        [Test]
+        public void Export_PreviousApiSignaturesRemainUsableAsDelegates()
+        {
+            // optional引数の追加でも、既存のメソッド参照に必要なシグネチャは変えない。
+            Func<LocalizationSettings, string> export = LocaloTranslationContext.ExportToString;
+            Func<LocalizationTable, string, LocalizationSettings, string> exportRow =
+                LocaloTranslationContext.ExportRowToString;
+
+            Assert.That(JsonUtility.FromJson<ProjectExport>(export(_settings)).schemaVersion, Is.EqualTo(4));
+            Assert.That(JsonUtility.FromJson<ProjectExport>(exportRow(_table, "HELLO", _settings)).schemaVersion,
+                Is.EqualTo(4));
+        }
+
+        [Test]
+        public void Export_GuidelineTargetsKeepSettingsOrderWhenRequestedInReverseOrder()
+        {
+            _settings.enabledLanguages.Add(SystemLanguage.Korean);
+            _settings.enabledLanguages.Add(SystemLanguage.French);
+            // 対象は集合として扱い、出力順は設定に従う。重複指定でガイドを増やさない。
+            var targets = new[] { SystemLanguage.French, SystemLanguage.English, SystemLanguage.French };
+            var exported = JsonUtility.FromJson<ProjectExport>(
+                LocaloTranslationContext.ExportToString(_settings, targets));
+
+            Assert.That(exported.languageGuidelines.languages.ConvertAll(guide => guide.language),
+                Is.EqualTo(new[] { "English", "French" }));
+        }
+
+        [Test]
+        public void Export_AllSupportedTargetsHaveTheChosenRegionAndResearchSources()
+        {
+            _settings.enabledLanguages.AddRange(LocalizationLanguages.SelectableLanguages);
+            var exported = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportToString(_settings));
+            List<LanguageGuideExport> guides = exported.languageGuidelines.languages;
+
+            Assert.That(guides, Has.Count.EqualTo(8));
+            Assert.That(guides.Find(guide => guide.language == "English").locale, Is.EqualTo("en-US"));
+            Assert.That(guides.Find(guide => guide.language == "French").locale, Is.EqualTo("fr-FR"));
+            Assert.That(guides.Find(guide => guide.language == "Spanish").locale, Is.EqualTo("es-419"));
+            Assert.That(guides.Find(guide => guide.language == "Portuguese").locale, Is.EqualTo("pt-BR"));
+            foreach (LanguageGuideExport guide in guides)
+            {
+                Assert.That(guide.points, Is.Not.Empty, guide.language);
+                Assert.That(guide.sources, Is.Not.Empty, guide.language);
+                foreach (SourceExport source in guide.sources)
+                    Assert.That(source.url, Does.StartWith("https://"), guide.language);
+            }
         }
 
         [Test]
@@ -196,9 +289,27 @@ namespace Localo.Tests
         [Serializable] private sealed class ProjectExport
         {
             public int schemaVersion;
+            public GuidelinesExport languageGuidelines;
             public List<GlossaryExport> glossary;
             public List<TableExport> translatorExamples;
             public List<TableExport> tables;
+        }
+        [Serializable] private sealed class GuidelinesExport
+        {
+            public string reviewedOn;
+            public List<string> commonPoints;
+            public List<LanguageGuideExport> languages;
+        }
+        [Serializable] private sealed class LanguageGuideExport
+        {
+            public string language;
+            public string locale;
+            public List<string> points;
+            public List<SourceExport> sources;
+        }
+        [Serializable] private sealed class SourceExport
+        {
+            public string url;
         }
         [Serializable] private sealed class GlossaryExport
         {

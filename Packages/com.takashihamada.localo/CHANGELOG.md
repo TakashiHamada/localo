@@ -10,7 +10,8 @@ All notable changes to Localo are documented in this file.
 - Translation tab: per sheet, a Text Type, free-form Translation Guidelines (speaker, personality, tone), and a Translator Lock. Locked language columns show `■` in the Table tab; CSV import rejects any change to them unless a human sets `AllowTranslatorCellChanges` (`-localoAllowTranslatorChanges` in batch mode).
 - Glossary tab for project-wide terms, their official spelling per language, and notes.
 - Per-row AI-researched Scene (`aiScene`) and Display Space (`aiDisplaySpace`). The details icon right of `Comment` in the Table tab opens them in the Localo Details window; it is reachable with `h`/`l` and opens with `Enter` or `i`.
-- `LocaloTranslationContext`: `ExportToString` / `ExportRowToString` write the context JSON for AI translation (schema version 3), and `SetRowContext` saves a row's scene and display space.
+- `LocaloTranslationContext`: `ExportToString` / `ExportRowToString` write the context JSON for AI translation (schema version 4), and `SetRowContext` saves a row's scene and display space.
+- Read-only Language Guidelines in the Translation tab: target regions and researched guidance for eight languages, with collapsible common rules and sources. The same packaged JSON supplies the preview and AI context; optional `targetLanguages` limits exported guides to enabled targets. AI instructions include inferring a consistent sheet tone for each language and speaker/listener relationship.
 - The project AI skill template describes the translation context, the Translator Lock, and how to research a key's scene and display space.
 
 ### Changed

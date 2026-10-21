@@ -40,7 +40,17 @@ string rowContext = LocaloTranslationContext.ExportRowToString(table, "MY_KEY");
 LocaloTranslationContext.SetRowContext(table, "MY_KEY", sceneText, displaySpaceText);
 ```
 
-場面は `LocalizationRow.aiScene`、器は `LocalizationRow.aiDisplaySpace`、文章の種類は `LocalizationTable.textType`、シートの方針は `LocalizationTable.translationInstructions`、用語集は `LocalizationSettings.glossary` に保存します。`SetRowContext` は `null` を渡した項目を変更しません。変更はUndoに対応します。旧版の `aiResearch` の内容は `aiScene` として読み込まれ、`SetResearch` は場面を保存する互換APIとして残しています。CSVは従来の列構成を維持し、文章の種類・方針・用語集・場面・器の受け渡しにはJSON APIを使います。JSONのスキーマはversion 3です。
+場面は `LocalizationRow.aiScene`、器は `LocalizationRow.aiDisplaySpace`、文章の種類は `LocalizationTable.textType`、シートの方針は `LocalizationTable.translationInstructions`、用語集は `LocalizationSettings.glossary` に保存します。`SetRowContext` は `null` を渡した項目を変更しません。変更はUndoに対応します。旧版の `aiResearch` の内容は `aiScene` として読み込まれ、`SetResearch` は場面を保存する互換APIとして残しています。CSVは従来の列構成を維持し、文章の種類・方針・用語集・場面・器の受け渡しにはJSON APIを使います。JSONのスキーマはversion 4です。
+
+### 言語別ガイドと口調の統一
+
+Translationタブの **Language Guidelines** は、8言語の対象地域と注意点を閲覧するプレビューです。共通ルールと出典は折りたたみで確認できます。作品固有の地域・口調は既存の **Translation Guidelines** に記入します。プレビューの言語選択は設定アセットを変更しません。
+
+画面とAI向けJSONは、同梱の `Editor/Resources/LocaloLanguageGuidelines.json` を共通で参照します。既定の地域はen-US・ko-KR・zh-CN・zh-TW・de-DE・fr-FR・es-419・pt-BRです。**Copy All Context as JSON** は、プレビューで選んだ言語に関係なく、有効な全言語のガイドを `languageGuidelines` に含めます。
+
+AIには、翻訳前にシート全体の原文と既存訳を読み、言語ごと・相手との関係ごとに口調を決めて統一する手順を渡します。人間の指定と翻訳者の確定訳を優先し、推定した方針と未解決の矛盾は作業報告に記載します。対象シート全体が未確認なら全体のJSONを取得し、確認後は行単位のJSONも使えます。
+
+APIは `ExportToString(targetLanguages: new[] { SystemLanguage.Korean })` のように、ガイドを有効な対象言語だけに絞れます。`ExportRowToString` も同じ引数を持ちます。この引数はガイドだけを絞り、原文・用語集・翻訳者のお手本は削除しません。配布用Skillを導入済みのプロジェクトは、SetupからSkillを更新すると新しい参照手順も反映されます。
 
 ### 翻訳者担当の列を保護する
 

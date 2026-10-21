@@ -14,25 +14,42 @@ namespace Localo.Editor
     /// </summary>
     public static class LocaloTranslationContext
     {
-        /// <summary>全シートの文脈と全行をJSONで返す。</summary>
-        public static string ExportToString(LocalizationSettings settings = null)
+        // 旧シグネチャを保ち、既存DLLとメソッド参照（Funcなど）からの呼び出しも維持する。
+        public static string ExportToString(LocalizationSettings settings)
+        {
+            return ExportToString(settings, null);
+        }
+
+        /// <summary>
+        /// 全シートの文脈と全行をJSONで返す。targetLanguagesはガイドだけを絞り、原文・用語集・お手本は保持する。
+        /// </summary>
+        public static string ExportToString(LocalizationSettings settings = null,
+            IEnumerable<SystemLanguage> targetLanguages = null)
         {
             settings = LocaloEditorSettings.Resolve(settings);
-            var context = CreateContext(settings);
+            var context = CreateContext(settings, targetLanguages);
             foreach (LocalizationTable table in LocaloEditorSettings.RegisteredTables(settings))
                 context.tables.Add(CreateTableContext(table, table.rows));
             return JsonUtility.ToJson(context, true);
         }
 
+        /// <summary>ガイド対象の追加前からある行出力APIのシグネチャを保持する。</summary>
+        public static string ExportRowToString(LocalizationTable table, string key, LocalizationSettings settings)
+        {
+            return ExportRowToString(table, key, settings, null);
+        }
+
         /// <summary>
         /// 指定キーの1行だけをJSONで返す。用語集と、全シートから集めた翻訳者のお手本（translatorExamples）は含める。
+        /// targetLanguagesはガイドだけを絞る。口調方針を決める前には、対象シート全体のJSONも確認する。
         /// </summary>
-        public static string ExportRowToString(LocalizationTable table, string key, LocalizationSettings settings = null)
+        public static string ExportRowToString(LocalizationTable table, string key, LocalizationSettings settings = null,
+            IEnumerable<SystemLanguage> targetLanguages = null)
         {
             settings = LocaloEditorSettings.Resolve(settings);
             RequireRegisteredTable(settings, table);
             LocalizationRow row = FindUniqueRow(table, key);
-            var context = CreateContext(settings);
+            var context = CreateContext(settings, targetLanguages);
             context.tables.Add(CreateTableContext(table, new[] { row }));
             return JsonUtility.ToJson(context, true);
         }
@@ -81,10 +98,16 @@ namespace Localo.Editor
             return rows[0];
         }
 
-        private static ProjectContext CreateContext(LocalizationSettings settings)
+        private static ProjectContext CreateContext(LocalizationSettings settings, IEnumerable<SystemLanguage> targetLanguages)
         {
             var context = new ProjectContext();
-            context.languages.AddRange((settings.enabledLanguages ?? new List<SystemLanguage>()).Select(language => language.ToString()));
+            SystemLanguage[] enabled = (settings.enabledLanguages ?? new List<SystemLanguage>()).ToArray();
+            context.languages.AddRange(enabled.Select(language => language.ToString()));
+            SystemLanguage[] targets = targetLanguages?.Distinct().ToArray() ?? enabled;
+            if (targets.Any(language => !enabled.Contains(language)))
+                throw new ArgumentException("ガイドの翻訳先には有効な言語を指定してください。", nameof(targetLanguages));
+            // 呼び出し側の対象指定順に左右されず、Tableと同じ設定順でガイドを渡す。
+            context.languageGuidelines = LocaloLanguageGuidelines.ForLanguages(enabled.Where(targets.Contains));
             foreach (LocaloGlossaryEntry entry in settings.glossary ?? new List<LocaloGlossaryEntry>())
             {
                 if (entry == null) continue;
@@ -139,12 +162,18 @@ namespace Localo.Editor
         }
 
         // JsonUtilityで書き出すDTO。フィールド名がそのままJSONのキーになる（クラス名は出力に影響しない）。
-        // schemaVersion 3: 行のaiResearchをaiScene/aiDisplaySpaceに分け、シートにtextTypeを追加した。
+        // schemaVersion 4: 共通ルールと対象言語のガイドをlanguageGuidelinesに追加した。
         [Serializable]
         private sealed class ProjectContext
         {
-            public int schemaVersion = 3;
+            public int schemaVersion = 4;
             public string instructions = "用語の正式表記はglossaryを参照。" +
+                "languageGuidelinesのcommonPointsと翻訳先に対応するlanguagesを参照し、locale・region・敬語・文法・表記に注意する。" +
+                "言語別ガイドは一般的な候補であり、人間の指示・作品の翻訳方針・用語集・翻訳者の確定訳を優先する。" +
+                "翻訳前にシート全体の原文と既存訳を読み、言語ごとの口調方針を決める。未指定の敬語や呼称は話者・相手・場面から推定し、" +
+                "同じ相手との関係では統一する。相手や場面で意図的に変わる敬語を一律に揃えない。" +
+                "対象シート全体が未確認ならExportToStringで取得してから口調を決める。全体の確認後は行単位のJSONを使える。" +
+                "推定した口調方針は作業報告に添え、不明点や矛盾はKey・言語とともに報告する。" +
                 "各シートのtextTypeはシートに並ぶ文章の種類、translationInstructionsは話者や口調などシートの声を含む翻訳方針で、行の大きい文脈になる。" +
                 "各行のaiSceneは表示される場面、aiDisplaySpaceは表示される器（部品・幅・行数・表示時間など）で、シートの文脈の上に乗る細かい文脈である。" +
                 "aiDisplaySpaceは訳の長さを判断する材料にする。" +
@@ -160,6 +189,7 @@ namespace Localo.Editor
                 "短くするために重要な意味や口調を損なわない。両立が難しい場合や表示領域が不明で収まりに懸念がある場合は、" +
                 "理由と短い代案を作業報告に示して人間の確認に回す。実際に収まるかは人間が画面で確認する。";
             public List<string> languages = new List<string>();
+            public LanguageGuidelinesContext languageGuidelines;
             public List<GlossaryContext> glossary = new List<GlossaryContext>();
             public List<TableContext> translatorExamples = new List<TableContext>();
             public List<TableContext> tables = new List<TableContext>();

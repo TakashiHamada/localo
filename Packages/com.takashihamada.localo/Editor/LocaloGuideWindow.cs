@@ -67,7 +67,9 @@ namespace Localo.Editor
                         "Commentは人間が書くメモです。AIは読むだけで編集しません。\n" +
                         "Translationタブでシートを選び、Translator Lockで翻訳者担当の言語にチェックすると、列全体をAIの上書きから保護します。表では■を付けて表示します。\n" +
                         "翻訳者担当の入力済みの訳は、ほかの文章を訳すお手本としてJSONに含まれます。人間はTableで文章を修正できます。\n" +
-                        "TranslationタブのCopy All Context as JSONで、文章の種類・方針・用語集・コメント・場面・器をまとめてAIに渡せます。",
+                        "Language Guidelinesでは、8言語の対象地域と翻訳の注意点を閲覧できます。共通の注意点と出典は折りたたみで表示します。\n" +
+                        "AI向けJSONには、翻訳前にシート全体の原文と既存訳を確認し、言語ごとの口調を推定する手順を含めます。JSONを渡すAIが、人間の指定と翻訳者の確定訳を優先して翻訳します。\n" +
+                        "TranslationタブのCopy All Context as JSONで、文章の種類・方針・用語集・コメント・場面・器と、有効な言語のガイドをまとめてAIに渡せます。",
                         EditorStyles.wordWrappedLabel);
                 }
 

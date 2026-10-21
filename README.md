@@ -73,8 +73,12 @@ The **Window > Localo** window has four tabs. The `?` button at the right end of
 
 - **Setup**: create the settings, register tables (sheets), choose languages and column widths, install the AI project skill.
 - **Table**: edit keys, translations and the human `Comment` in a keyboard-first grid. The icon right of `Comment` (the details icon) opens the row's AI-researched Scene and Display Space.
-- **Translation**: per sheet, choose the Text Type, write the Translation Guidelines (speaker, personality, tone), and set the **Translator Lock**. Locked language columns are shown with `■` in the Table tab and are never changed by AI. **Copy All Context as JSON** copies the context for AI translation (`Localo.Editor.LocaloTranslationContext`).
+- **Translation**: per sheet, choose the Text Type, write the Translation Guidelines (speaker, personality, tone), and set the **Translator Lock**. Locked language columns are shown with `■` in the Table tab and are never changed by AI. **Language Guidelines** previews read-only guidance for eight target languages, including their target regions; common rules and sources are collapsible. **Copy All Context as JSON** includes the same guidance for enabled languages alongside the context for AI translation (`Localo.Editor.LocaloTranslationContext`, schema version 4).
 - **Glossary**: project-wide terms with their official spelling per language and notes.
+
+The shared guide data lives in `Editor/Resources/LocaloLanguageGuidelines.json` inside the package. The defaults are US English, Korean (South Korea), Simplified Chinese (mainland China), Traditional Chinese (Taiwan), German (Germany), French (France), Latin American Spanish (`es-419`), and Brazilian Portuguese (`pt-BR`). Project-specific instructions and translator-approved text take priority. Before translating, the AI should read the whole sheet, infer a tone for each language and speaker/listener relationship, keep that tone consistent, and report its inferred policy and unresolved conflicts.
+
+Both context export APIs accept an optional `targetLanguages` argument to limit the included language guides to enabled targets, for example `LocaloTranslationContext.ExportToString(targetLanguages: new[] { SystemLanguage.Korean })`. This filters only the guides; source text, glossary entries, and translator examples remain available. Confirm the whole target sheet before using row-only JSON to translate individual lines. The preview language selection does not change project settings or the languages included by **Copy All Context as JSON**.
 
 ## Table shortcuts
 

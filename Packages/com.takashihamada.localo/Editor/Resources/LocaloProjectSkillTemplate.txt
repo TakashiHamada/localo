@@ -36,6 +36,15 @@ Treat `Packages/com.takashihamada.localo/` as the installed tool and `Assets/Loc
 - 翻訳前に `Localo.Editor.LocaloTranslationContext.ExportToString()`、または `ExportRowToString(table, key)` を呼ぶ。文章の種類・方針・用語集・翻訳文・人間のコメント・場面・器が区別されたJSONを読み、翻訳に反映する。場面や器が空・不明なら、下の手順で調査する。
 - 場面と器は `LocaloTranslationContext.SetRowContext(table, key, scene, displaySpace)` で保存する。`null` を渡した項目は変更しない。このAPIはコメント欄・翻訳文・シートの設定を変更しない。旧APIの `SetResearch` は使わない。人間はTableの行ごとのCommentの右にある詳細アイコンから場面と器を確認・修正できる。
 
+### 言語別ガイドとシートの口調
+
+- コンテキストJSONはschema version 4。`languageGuidelines.commonPoints`と翻訳先に対応する`languageGuidelines.languages`を翻訳前に読む。`locale`・`region`・`points`・`notes`と出典を参照する。TranslationタブのLanguage Guidelinesも同じ資料を表示する。
+- 既定はen-US・ko-KR・zh-CN・zh-TW・de-DE・fr-FR・es-419・pt-BR。人間の地域・口調の指定、用語集、翻訳者の確定訳を優先し、一般的なガイドで上書きしない。
+- 翻訳前にシート全体の原文と既存訳を読み、対象言語ごとの口調方針を決める。人間のシート方針、用語集、同じシートの翻訳者の確定訳を優先し、未指定なら話者・相手・場面から敬語・呼称・語尾などを推定する。人間の翻訳方針の欄を推定結果で書き換えない。
+- 同じ話者と相手の関係では口調を揃える。例えば韓国語の합니다体・해요体・반말は関係と場面で使い分け、相手によって変わる敬語や、感情・関係の変化に伴う意図的な切替を一律に揃えない。別シートの訳から話者の口調を無条件に流用しない。
+- 対象シート全体が未確認なら`ExportToString()`で取得し、口調方針を決める。全体の確認後は行単位のJSONも使える。推定した言語別の口調方針を作業報告に添える。既存訳との矛盾や関係性の不明点は、調べても解決できなければKey・言語・理由を添えて人間に報告する。
+- `ExportToString(targetLanguages: new[] { SystemLanguage.Korean })`のように、ガイドだけを有効な対象言語に絞れる。`ExportRowToString`も同じ引数を持つ。原文・用語集・お手本の言語はこの引数で削除されない。引数を省略すると有効な全言語のガイドを含む。日本語は今回の言語別ガイドの対象外。
+
 ### 行の文脈（場面と器）の調査手順
 
 人間がキーを指定して調査を依頼したときに使う。
