@@ -37,14 +37,14 @@ namespace Localo.Editor
         private const float EditingOverlayMinimumRows = 3f;
         private const float DetailsColumnWidth = 28f;
         private const float SheetPopupWidth = 280f;
-        private const string DetailsIconName = "TextAsset Icon";
+        private const string DetailsButtonLabel = "...";
         // Translator Lock の列のセルは、先頭にこの印を付けて表示する（保存される文字列には含めない）。
         private const string TranslatorLockMarker = "■ ";
         private const string TranslatorLockCellTooltip = "翻訳者担当の列。AIは変更しません。\n";
 
-        // 詳細アイコンは全行で同じなので、tooltip の2種類だけを作って使い回す。
-        private GUIContent _detailsButtonEmptyContent;
-        private GUIContent _detailsButtonFilledContent;
+        // 全行で使い回す表示キャッシュ。スクリプト再読み込み時は作り直す。
+        [NonSerialized] private GUIContent _detailsButtonEmptyContent;
+        [NonSerialized] private GUIContent _detailsButtonFilledContent;
 
         private readonly GUIContent _cellContent = new GUIContent();
         private readonly GUIContent _measurementContent = new GUIContent();
@@ -464,10 +464,9 @@ namespace Localo.Editor
         {
             if (_detailsButtonEmptyContent == null)
             {
-                Texture icon = EditorGUIUtility.IconContent(DetailsIconName).image;
-                _detailsButtonEmptyContent = new GUIContent(icon,
+                _detailsButtonEmptyContent = new GUIContent(DetailsButtonLabel,
                     "AIが調査した場面と器はまだありません。クリック、または選択してEnterで行の詳細を開きます。");
-                _detailsButtonFilledContent = new GUIContent(icon,
+                _detailsButtonFilledContent = new GUIContent(DetailsButtonLabel,
                     "クリック、または選択してEnterで、この行の場面と器を確認・修正できます。");
             }
             return hasRowContext ? _detailsButtonFilledContent : _detailsButtonEmptyContent;
