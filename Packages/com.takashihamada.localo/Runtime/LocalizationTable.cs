@@ -11,8 +11,19 @@ namespace Localo.Runtime
     [CreateAssetMenu(fileName = "LocalizationTable", menuName = "Localo/Localo Table")]
     public class LocalizationTable : ScriptableObject
     {
+        [Header("-- Translation Context --")]
+        [Tooltip("AIに渡すシート全体の翻訳方針。使用場面、話者、性格、口調などを自由に記述します。")]
+        [TextArea(4, 12)]
+        public string translationInstructions = string.Empty;
+
+        [Tooltip("このシートで翻訳者が担当する言語。AIは列全体を変更せず、入力済みの訳をお手本として参照します。")]
+        public List<SystemLanguage> translatorLanguages = new List<SystemLanguage>();
+
+        /// <summary>指定言語の列が翻訳者担当としてAIから保護されているか。</summary>
+        public bool IsTranslatorLanguage(SystemLanguage language) => translatorLanguages != null && translatorLanguages.Contains(language);
+
         [Header("-- Rows --")]
-        [Tooltip("List of translation rows. One row = one translation key.")]
+        [Tooltip("翻訳する文章の一覧です。1行が1つの翻訳キーに対応します。")]
         public List<LocalizationRow> rows = new List<LocalizationRow>();
 
         /// <summary>
@@ -78,14 +89,18 @@ namespace Localo.Runtime
     [Serializable]
     public class LocalizationRow
     {
-        [Tooltip("Translation key (e.g. \"TXT_START\").")]
+        [Tooltip("文章を識別する翻訳キーです。登録された全テーブルを通して一意にしてください。")]
         public string key = string.Empty;
 
-        [Tooltip("Per-language text data.")]
+        [Tooltip("各言語の翻訳文です。")]
         public List<LanguageData> translations = new List<LanguageData>();
 
-        [Tooltip("Editor-only memo field. Not used in-game.")]
+        [Tooltip("人間が書く翻訳メモ。AIは読むだけにし、編集しません。")]
         public string comment = string.Empty;
+
+        [Tooltip("AIが調査した使用状況や文脈。事実・推測・不明点と根拠を記録します。")]
+        [TextArea(6, 20)]
+        public string aiResearch = string.Empty;
     }
 
     /// <summary>
@@ -98,5 +113,6 @@ namespace Localo.Runtime
 
         [TextArea(1, 4)]
         public string text;
+
     }
 }

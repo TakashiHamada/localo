@@ -15,7 +15,7 @@ namespace Localo.Editor
 
                 EditorGUILayout.LabelField("Localo Guide", EditorStyles.boldLabel);
                 EditorGUILayout.HelpBox(
-                    "Localo is designed for keyboard-first table editing. Complete the setup, then use the shortcuts below.",
+                    "Localoはキーボードを中心に操作できる多言語管理ツールです。Setupで初期設定を行い、以下のショートカットを使って編集できます。",
                     MessageType.Info);
 
                 EditorGUILayout.Space(8f);
@@ -23,49 +23,64 @@ namespace Localo.Editor
                 {
                     EditorGUILayout.LabelField("-- Setup --", EditorStyles.boldLabel);
                     EditorGUILayout.LabelField(
-                        "1. Click Quick Setup to create the settings asset and first table.\n" +
-                        "2. Select the languages used by the project. English is always the base language.\n" +
-                        "3. Choose which language columns are visible in the Table tab. Hidden data is preserved.\n" +
-                        "4. Reorder language columns and adjust column widths.\n" +
-                        "5. Create or register additional tables as needed.",
+                        "1. Quick Setupで設定アセットと最初のシートを作成します。\n" +
+                        "2. プロジェクトで使う言語を選びます。基準言語はEnglishです。\n" +
+                        "3. Tableに表示する言語列を選びます。非表示の列もデータは保持されます。\n" +
+                        "4. 言語列の順番や列幅を調整します。\n" +
+                        "5. SetupのRegistered Tablesにある「+ Add Table」でシートを追加できます。",
                         EditorStyles.wordWrappedLabel);
                 }
 
                 EditorGUILayout.Space(8f);
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                 {
-                    EditorGUILayout.LabelField("-- Table basics --", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField("-- Table Basics --", EditorStyles.boldLabel);
                     EditorGUILayout.LabelField(
-                        "Choose a table from the popup at the top. Select cells with the keyboard or mouse. " +
-                        "Only the active Insert-mode cell becomes an editable text field.",
+                        "上部のプルダウンでシートを選び、キーボードまたはマウスでセルを選択します。" +
+                        "iキーまたはダブルクリックで編集を開始すると、選択したセルに入力できます。",
                         EditorStyles.wordWrappedLabel);
                 }
 
                 EditorGUILayout.Space(8f);
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                 {
-                    EditorGUILayout.LabelField("-- Keyboard shortcuts --", EditorStyles.boldLabel);
-                    DrawShortcutRow("h / j / k / l", "Move left / down / up / right. Arrow keys work too.");
-                    DrawShortcutRow("Shift + movement", "Extend the current selection range.");
-                    DrawShortcutRow("i", "Edit the selected cell (Insert mode).");
-                    DrawShortcutRow("<br>", "Store a line break inside a cell.");
-                    DrawShortcutRow("Enter / Esc", "Commit the current edit and return to Normal mode.");
-                    DrawShortcutRow("Esc Esc", "Clear search and return focus to the grid.");
-                    DrawShortcutRow("x / Delete / Backspace", "Clear selected cell contents without deleting rows.");
-                    DrawShortcutRow("o", "Insert a row below the current row.");
-                    DrawShortcutRow("d d", "Delete the current row.");
-                    DrawShortcutRow("/", "Focus the search field.");
-                    DrawShortcutRow("Ctrl/Cmd + C/X/V", "Copy, cut, or paste a TSV selection.");
+                    EditorGUILayout.LabelField("-- Translation & Details --", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField(
+                        "Translationタブでシートごとの翻訳方針と共通用語集を編集できます。\n" +
+                        "Tableの各行のCommentの右にあるメモアイコンで、AIが調査したコンテクストを確認・修正できます。\n" +
+                        "左右キーまたはh/lでメモアイコンまで移動すると、自動でスクロールします。Enterまたはiで詳細を開きます。\n" +
+                        "Commentは人間が書くメモです。AIは読むだけで編集しません。\n" +
+                        "Translationタブでシートを選び、Translator Lockで翻訳者担当の言語にチェックすると、列全体をAIの上書きから保護します。表では■を付けて表示します。\n" +
+                        "翻訳者担当の入力済みの訳は、ほかの文章を訳すお手本としてJSONに含まれます。人間はTableで文章を修正できます。\n" +
+                        "Copy All Context as JSONまたはCopy Row Context as JSONで、方針・用語集・コメント・調査結果をまとめてAIに渡せます。",
+                        EditorStyles.wordWrappedLabel);
                 }
 
                 EditorGUILayout.Space(8f);
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                 {
-                    EditorGUILayout.LabelField("-- Mouse controls --", EditorStyles.boldLabel);
-                    DrawShortcutRow("Click", "Select a cell.");
-                    DrawShortcutRow("Drag", "Extend the selection range.");
-                    DrawShortcutRow("Shift + click", "Select a range from the existing anchor.");
-                    DrawShortcutRow("Double-click", "Edit the clicked cell.");
+                    EditorGUILayout.LabelField("-- Keyboard Shortcuts --", EditorStyles.boldLabel);
+                    DrawShortcutRow("h / j / k / l", "左・下・上・右へ移動します。矢印キーでも操作できます。");
+                    DrawShortcutRow("Shift + movement", "移動先まで選択範囲を広げます。");
+                    DrawShortcutRow("i", "選択したセルの編集を開始します。メモアイコンでは詳細を開きます。");
+                    DrawShortcutRow("<br>", "セル内の改行を表します。");
+                    DrawShortcutRow("Enter / Esc", "編集中の内容を確定して通常の選択に戻ります。メモアイコンを選択中はEnterで詳細を開きます。");
+                    DrawShortcutRow("Esc Esc", "検索を解除して表にフォーカスを戻します。");
+                    DrawShortcutRow("x / Delete / Backspace", "選択したセルの内容を消去します。行は削除しません。");
+                    DrawShortcutRow("o", "現在の行の下に新しい行を挿入します。");
+                    DrawShortcutRow("d d", "現在の行を削除します。");
+                    DrawShortcutRow("/", "検索欄にフォーカスを移します。");
+                    DrawShortcutRow("Ctrl/Cmd + C/X/V", "選択範囲をTSV形式でコピー・切り取り・貼り付けします。");
+                }
+
+                EditorGUILayout.Space(8f);
+                using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+                {
+                    EditorGUILayout.LabelField("-- Mouse Controls --", EditorStyles.boldLabel);
+                    DrawShortcutRow("Click", "セルを選択します。");
+                    DrawShortcutRow("Drag", "ドラッグした範囲を選択します。");
+                    DrawShortcutRow("Shift + click", "選択開始位置からクリックしたセルまでを選択します。");
+                    DrawShortcutRow("Double-click", "クリックしたセルの編集を開始します。");
                 }
             }
         }

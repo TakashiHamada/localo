@@ -2,6 +2,10 @@
 
 All notable changes to Localo are documented in this file.
 
+## [Unreleased]
+
+- CSV export / import API for translator review workflows (`Localo.Editor.LocaloCsv`), with dry run, per-column filters, baseline-based conflict detection, and batch-mode entry points.
+
 ## [0.1.0] - Unreleased
 
 - Initial public UPM package.

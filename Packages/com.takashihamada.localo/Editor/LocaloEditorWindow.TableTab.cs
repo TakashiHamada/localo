@@ -35,6 +35,7 @@ namespace Localo.Editor
         private static float HorizontalScrollbarHeight => GUI.skin.horizontalScrollbar.fixedHeight;
         private const float SelectionScrollBottomPaddingRows = 1f;
         private const float EditingOverlayMinimumRows = 3f;
+        private const float DetailsColumnWidth = 28f;
 
         private readonly GUIContent _cellContent = new GUIContent();
         private readonly GUIContent _measurementContent = new GUIContent();
@@ -62,13 +63,13 @@ namespace Localo.Editor
 
             if (_settings == null)
             {
-                EditorGUILayout.HelpBox("Please assign a LocalizationSettings asset on the Setup tab.", MessageType.Warning);
+                EditorGUILayout.HelpBox("SetupタブでLocalizationSettingsアセットを設定してください。", MessageType.Warning);
                 return;
             }
 
             if (_table == null)
             {
-                EditorGUILayout.HelpBox("Please assign a LocalizationTable to edit on the Setup tab.", MessageType.Info);
+                EditorGUILayout.HelpBox("SetupのRegistered Tablesにある「+ Add Table」で、編集するシートを作成してください。", MessageType.Info);
                 return;
             }
 
@@ -358,18 +359,19 @@ namespace Localo.Editor
                     DrawHeaderCell(label, GetLanguageColumnWidth(), LanguageHeaderBackground);
                 }
 
-                DrawHeaderCell("Comment", GetCommentColumnWidth(), CommentHeaderBackground);
+                DrawHeaderCell("Comment", GetCommentColumnWidth(), CommentHeaderBackground, "人間が書く翻訳メモです。AIは読むだけで編集しません。");
+                DrawHeaderCell(string.Empty, DetailsColumnWidth, CommentHeaderBackground);
                 GUILayout.Space(VerticalScrollbarWidth);
             }
             GUILayout.EndScrollView();
         }
 
-        private static void DrawHeaderCell(string label, float width, Color background)
+        private static void DrawHeaderCell(string label, float width, Color background, string tooltip = null)
         {
             Rect rect = GUILayoutUtility.GetRect(width, EditorGUIUtility.singleLineHeight, GUILayout.Width(width));
             if (Event.current.type == EventType.Repaint)
                 EditorGUI.DrawRect(rect, background);
-            EditorGUI.LabelField(rect, label, EditorStyles.boldLabel);
+            EditorGUI.LabelField(rect, new GUIContent(label, tooltip), EditorStyles.boldLabel);
             DrawCellBorder(rect);
         }
 
@@ -393,7 +395,39 @@ namespace Localo.Editor
                 }
 
                 DrawCell(filteredIdx, realRow, 1 + langCount, row.comment, GetCommentColumnWidth(), rowHeight);
+                DrawRowDetailsButton(filteredIdx, row, rowHeight);
             }
+        }
+
+        private void DrawRowDetailsButton(int filteredIdx, LocalizationRow row, float rowHeight)
+        {
+            Rect rect = GUILayoutUtility.GetRect(DetailsColumnWidth, rowHeight,
+                GUILayout.Width(DetailsColumnWidth), GUILayout.Height(rowHeight));
+            int detailsCol = GetEditableColumnCount();
+            if (Event.current.type == EventType.Repaint)
+            {
+                EditorGUI.DrawRect(rect, IsCellInSelection(filteredIdx, detailsCol)
+                    ? SelectedCellBackground : TableCellBackground);
+                if (filteredIdx == _selectedRow && _selectedCol == detailsCol)
+                    _selectedCellRect = rect;
+            }
+            var content = new GUIContent(EditorGUIUtility.IconContent("TextAsset Icon").image,
+                string.IsNullOrEmpty(row.aiResearch)
+                    ? "AIの調査結果はまだありません。クリック、または選択してEnterで行の詳細を開きます。"
+                    : "クリック、または選択してEnterで、この行のAI調査結果を確認・修正できます。");
+            if (GUI.Button(new Rect(rect.x + 2f, rect.y + 1f, rect.width - 4f, RowHeight - 2f),
+                    content, EditorStyles.miniButton))
+            {
+                if (_mode == EditorMode.Insert) CommitInsertAndReturnToNormal();
+                _selectedRow = _selectionAnchorRow = filteredIdx;
+                _selectedCol = _selectionAnchorCol = detailsCol;
+                _pendingSelectRealRow = _filteredIndices[filteredIdx];
+                _scrollToSelectionPending = true;
+                _isDragSelecting = false;
+                GUI.FocusControl(null);
+                OpenSelectedRowDetails();
+            }
+            DrawCellBorder(rect);
         }
 
         private float CalculateStoredRowHeight(LocalizationRow row)
@@ -582,8 +616,11 @@ namespace Localo.Editor
 
             GUIStyle labelStyle = GetCellLabelStyle();
             string fullDisplayText = FormatStoredTextForCellDisplay(displayValue);
+            bool translatorCell = col >= 1 && col <= GetVisibleLanguageCount() &&
+                _table.IsTranslatorLanguage(GetVisibleLanguageAt(col - 1));
+            if (translatorCell) fullDisplayText = "■ " + fullDisplayText;
             _cellContent.text = BuildEllipsizedCellText(fullDisplayText, rect.width, labelStyle);
-            _cellContent.tooltip = fullDisplayText;
+            _cellContent.tooltip = translatorCell ? "翻訳者担当の列。AIは変更しません。\n" + fullDisplayText : fullDisplayText;
             EditorGUI.LabelField(rect, _cellContent, labelStyle);
             DrawCellBorder(rect);
 
@@ -715,6 +752,8 @@ namespace Localo.Editor
             var (rowLo, rowHi, colLo, colHi) = GetSelectionBounds();
             rowLo = Mathf.Clamp(rowLo, 0, _filteredIndices.Count - 1);
             rowHi = Mathf.Clamp(rowHi, 0, _filteredIndices.Count - 1);
+            colHi = Mathf.Min(colHi, GetEditableColumnCount() - 1);
+            if (colLo > colHi) return;
 
             Undo.RecordObject(_table, "Clear Localization Cells");
             bool anyChanged = false;
@@ -756,6 +795,8 @@ namespace Localo.Editor
             var (rowLo, rowHi, colLo, colHi) = GetSelectionBounds();
             rowLo = Mathf.Clamp(rowLo, 0, _filteredIndices.Count - 1);
             rowHi = Mathf.Clamp(rowHi, 0, _filteredIndices.Count - 1);
+            colHi = Mathf.Min(colHi, GetEditableColumnCount() - 1);
+            if (colLo > colHi) return;
 
             var sb = new StringBuilder();
             for (int r = rowLo; r <= rowHi; r++)
@@ -790,7 +831,9 @@ namespace Localo.Editor
             var (rowLo, rowHi, colLo, colHi) = GetSelectionBounds();
             rowLo = Mathf.Clamp(rowLo, 0, _filteredIndices.Count - 1);
             rowHi = Mathf.Clamp(rowHi, 0, _filteredIndices.Count - 1);
-            int colCount = 1 + GetVisibleLanguageCount() + 1; // Key + visible language columns + Comment
+            int colCount = GetEditableColumnCount();
+            colHi = Mathf.Min(colHi, colCount - 1);
+            if (colLo > colHi) return;
 
             bool isSingleCellClipboard = parsedRows.Count == 1 && parsedRows[0].Count == 1;
 
@@ -854,7 +897,8 @@ namespace Localo.Editor
 
             List<List<string>> rowsToPaste = _pendingPasteRows;
             _pendingPasteRows = null;
-            int colCount = 1 + GetVisibleLanguageCount() + 1;
+            int colCount = GetEditableColumnCount();
+            if (_pendingPasteStartCol >= colCount) return;
 
             Undo.RecordObject(_table, "Paste Localization Cells");
             bool addedRows = false;

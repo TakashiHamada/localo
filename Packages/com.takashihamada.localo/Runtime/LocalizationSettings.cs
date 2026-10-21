@@ -22,34 +22,38 @@ namespace Localo.Runtime
     public class LocalizationSettings : ScriptableObject
     {
         [Header("-- Languages --")]
-        [Tooltip("Enabled languages. English is index 0; list order defines the Table tab's column order.")]
+        [Tooltip("使用する言語です。Englishは先頭に固定され、一覧の順番がTableの列順になります。")]
         public List<SystemLanguage> enabledLanguages = new List<SystemLanguage> { LocalizationLanguages.BaseLanguage };
 
-        [Tooltip("Languages currently visible as columns in the editor table.")]
+        [Tooltip("Tableで列として表示する言語です。非表示にしても翻訳データは保持されます。")]
         public List<SystemLanguage> visibleLanguages = new List<SystemLanguage> { LocalizationLanguages.BaseLanguage };
 
         [HideInInspector]
         public bool visibleLanguagesInitialized;
 
         [Header("-- Startup Language --")]
-        [Tooltip("Choose whether startup uses the device language or the fixed language below.")]
+        [Tooltip("起動時に端末の言語を使うか、下の固定言語を使うかを選びます。")]
         public StartupLanguageMode startupLanguageMode = StartupLanguageMode.SystemLanguage;
 
-        [Tooltip("Language used when Startup Language Mode is Fixed Language. It must be enabled.")]
+        [Tooltip("Startup Language ModeがFixed Languageのときに使う言語です。有効な言語から選んでください。")]
         public SystemLanguage startupLanguage = LocalizationLanguages.BaseLanguage;
 
         [Header("-- Tables --")]
-        [Tooltip("Localization tables searched at runtime, in first-match priority order.")]
+        [Tooltip("実行時に検索する翻訳テーブルです。キーが重複する場合は先に登録されたテーブルを優先します。")]
         public List<TableInfo> registeredTables = new List<TableInfo>();
 
+        [Header("-- Glossary --")]
+        [Tooltip("全シート共通の用語集です。固有名詞や共通用語の正式表記と意味を記録します。")]
+        public List<LocaloGlossaryEntry> glossary = new List<LocaloGlossaryEntry>();
+
         [Header("-- Table Columns --")]
-        [Tooltip("Width in pixels of the Key column in the Table tab's grid.")]
+        [Tooltip("TableのKey列の幅をピクセル単位で指定します。")]
         public int keyColumnWidth = 140;
 
-        [Tooltip("Width in pixels of each language column in the Table tab's grid.")]
+        [Tooltip("Tableの各言語列の幅をピクセル単位で指定します。")]
         public int languageColumnWidth = 220;
 
-        [Tooltip("Width in pixels of the Comment column in the Table tab's grid.")]
+        [Tooltip("TableのComment列の幅をピクセル単位で指定します。")]
         public int commentColumnWidth = 180;
 
         /// <summary>
@@ -102,13 +106,27 @@ namespace Localo.Runtime
     }
 
     /// <summary>
+    /// 全シートで共有する用語の正式表記と補足。
+    /// </summary>
+    [Serializable]
+    public class LocaloGlossaryEntry
+    {
+        [Tooltip("正式表記を揃えたい固有名詞や共通用語の、原文の表記です。")]
+        public string source = string.Empty;
+        [Tooltip("各言語で使う用語の正式表記です。")]
+        public List<LanguageData> translations = new List<LanguageData>();
+        [Tooltip("用語の意味・背景・表記上の注意点を記入します。")]
+        [TextArea(2, 6)] public string notes = string.Empty;
+    }
+
+    /// <summary>
     /// Registration entry for a localization table. Its key always comes from the referenced
     /// asset's filename, so renaming the asset also renames the key.
     /// </summary>
     [Serializable]
     public struct TableInfo
     {
-        [Tooltip("Localization table searched at runtime for this registration.")]
+        [Tooltip("実行時の翻訳検索に使うテーブルアセットです。")]
         public LocalizationTable tableAsset;
 
         public string Key => tableAsset != null ? tableAsset.name : string.Empty;

@@ -2,7 +2,7 @@
 // LocaloEditorWindow.cs — main entry point for Localo
 // =============================================================================
 // Launched from Window/Localo.
-// Two tabs: Screen A (Setup) and Screen B (Table, Excel-like grid).
+// Setup、Table、Translation、Guideの各タブを切り替える。
 // This file owns window state and OnGUI dispatch, plus the Vim-like keybinding
 // event handling core. Per-tab drawing lives in
 // LocaloEditorWindow.SetupTab.cs / LocaloEditorWindow.TableTab.cs.
@@ -86,7 +86,7 @@ namespace Localo.Editor
         private static readonly Color WarningSectionBackground = new Color(1f, 0.78f, 0.18f, 0.18f);
         private static readonly Color ActiveSearchBackground = new Color(1f, 0.88f, 0.18f, 0.28f);
 
-        private static readonly string[] ToolbarLabels = { "Setup", "Table", "Guide" };
+        private static readonly string[] ToolbarLabels = { "Setup", "Table", "Translation", "Guide" };
 
         // Overlaid on top of the Key cell's normal/selected background (not replacing it) so a
         // duplicate key stays visibly red whether or not the cell is currently selected.
@@ -108,7 +108,7 @@ namespace Localo.Editor
         private static readonly PropertyInfo GuiUtilityCompositionStringProperty =
             typeof(GUIUtility).GetProperty("compositionString", BindingFlags.Static | BindingFlags.NonPublic);
 
-        private enum Tab { Setup, Table, Guide }
+        private enum Tab { Setup, Table, Translation, Guide }
         private enum EditorMode { Normal, Insert }
         private enum PendingOpType { None, InsertRowBelow, DeleteRow }
 
@@ -257,6 +257,9 @@ namespace Localo.Editor
                 case Tab.Table:
                     DrawTableTab();
                     break;
+                case Tab.Translation:
+                    DrawTranslationTab();
+                    break;
                 case Tab.Guide:
                     DrawGuideTab();
                     break;
@@ -268,6 +271,8 @@ namespace Localo.Editor
             var newTab = (Tab)GUILayout.Toolbar((int)_currentTab, ToolbarLabels);
             if (newTab != _currentTab)
             {
+                if (_mode == EditorMode.Insert)
+                    CommitInsertAndReturnToNormal();
                 _currentTab = newTab;
                 // Don't carry Insert mode across a tab switch, or a TextField on the other tab could keep focus.
                 _mode = EditorMode.Normal;
@@ -279,6 +284,7 @@ namespace Localo.Editor
                 _focusPendingForceReinitialize = false;
                 _moveInsertCaretToEndPending = false;
                 GUI.FocusControl(null);
+                GUIUtility.ExitGUI();
             }
         }
 
@@ -388,8 +394,8 @@ namespace Localo.Editor
                     evt.Use();
                     return;
                 }
-                // Normal-mode Enter intentionally does nothing. Insert mode is entered only with
-                // 'i' or double-click; Enter remains reserved for committing an active edit.
+                if (_selectedCol == GetEditableColumnCount())
+                    OpenSelectedRowDetails();
                 evt.Use();
                 return;
             }
@@ -532,7 +538,7 @@ namespace Localo.Editor
             if (_filteredIndices.Count > 0)
                 _selectedRow = Mathf.Clamp(_selectedRow + rowDelta, 0, _filteredIndices.Count - 1);
 
-            int colCount = 1 + GetVisibleLanguageCount() + 1; // Key + visible language columns + Comment
+            int colCount = GetEditableColumnCount() + 1; // メモアイコンも移動先に含める。
             _selectedCol = Mathf.Clamp(_selectedCol + colDelta, 0, colCount - 1);
 
             if (!extendSelection)
@@ -549,12 +555,25 @@ namespace Localo.Editor
             int realRow = GetSelectedRealRowIndex();
             if (realRow < 0 || _table == null) return; // Nothing to do if there's no row (use 'o' to create one first)
 
+            if (_selectedCol == GetEditableColumnCount())
+            {
+                OpenSelectedRowDetails();
+                return;
+            }
+
             _mode = EditorMode.Insert;
             _insertBuffer = ConvertStoredTextToEditorText(ReadCellValue(realRow, _selectedCol));
             _focusPendingControlName = CellControlName(realRow, _selectedCol);
             _focusPendingForceReinitialize = true;
             _moveInsertCaretToEndPending = true;
             Repaint();
+        }
+
+        private void OpenSelectedRowDetails()
+        {
+            int realRow = GetSelectedRealRowIndex();
+            if (_table == null || realRow < 0 || realRow >= _table.rows.Count) return;
+            LocaloRowDetailsWindow.Open(_settings, _table, _table.rows[realRow].key);
         }
 
         /// <summary>
@@ -834,7 +853,7 @@ namespace Localo.Editor
             }
 
             _selectedRow = Mathf.Clamp(_selectedRow, 0, Mathf.Max(0, _filteredIndices.Count - 1));
-            int colCount = 1 + GetVisibleLanguageCount() + 1; // Key + visible language columns + Comment
+            int colCount = GetEditableColumnCount() + 1;
             _selectedCol = Mathf.Clamp(_selectedCol, 0, colCount - 1);
 
             if (_collapseSelectionOnResolve)
@@ -867,6 +886,9 @@ namespace Localo.Editor
 
         private float GetCommentColumnWidth() =>
             _settings != null ? Mathf.Max(MinColumnWidth, _settings.commentColumnWidth) : CommentColumnWidth;
+
+        // メモアイコンは選択できる操作欄であり、編集・コピー・貼り付けの対象ではない。
+        private int GetEditableColumnCount() => GetVisibleLanguageCount() + 2;
 
         private int GetVisibleLanguageCount()
         {
@@ -983,7 +1005,7 @@ namespace Localo.Editor
             if (col == 0) return row.key;
             if (col >= 1 && col <= langCount)
                 return _table.GetText(row, GetVisibleLanguageAt(col - 1));
-            return row.comment;
+            return col == langCount + 1 ? row.comment : string.Empty;
         }
 
         private void WriteCellValue(int realRow, int col, string value)
@@ -1001,7 +1023,7 @@ namespace Localo.Editor
                 SystemLanguage lang = GetVisibleLanguageAt(col - 1);
                 _table.SetText(row, lang, value);
             }
-            else
+            else if (col == langCount + 1)
             {
                 row.comment = value;
             }

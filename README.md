@@ -81,6 +81,72 @@ Keep platform SDK code in the consuming project. Localo itself only depends on U
 | `/` | Focus search |
 | `Ctrl/Cmd` + `C` `X` `V` | Copy, cut, paste TSV |
 
+## CSV export / import
+
+Localo can round-trip translations through CSV so that translators can review them in a spreadsheet. The feature is an editor API (`Localo.Editor.LocaloCsv`) for scripts and AI tools; it has no window UI.
+
+### Review workflow
+
+1. Export the current data and keep the file as the baseline.
+2. Send a copy to the translator. They edit cells without changing the `Table` and `Key` columns.
+3. Dry-run the import with the baseline and read the report.
+4. Import for real. The write is a single Undo step.
+
+```csharp
+using Localo.Editor;
+using UnityEngine;
+
+LocaloCsv.ExportToFile("Localization/review.csv");
+
+var options = new LocaloCsvImportOptions
+{
+    DryRun = true,
+    BaselineCsvPath = "Localization/review.csv",
+    Languages = new[] { SystemLanguage.Japanese }, // optional: only these language columns
+    ImportComments = false,                        // optional: keep comments as they are
+};
+LocaloCsvReport report = LocaloCsv.ImportFromFile("Localization/review-done.csv", options);
+Debug.Log(report);
+
+options.DryRun = false;
+report = LocaloCsv.ImportFromFile("Localization/review-done.csv", options);
+```
+
+`ExportToString` and `ImportFromString` do the same without touching files.
+
+### Format
+
+- UTF-8 (exported with BOM), RFC 4180 quoting, CRLF line endings. Excel and Google Sheets can open and save it.
+- Columns: `Table`, `Key`, one column per enabled language in `enabledLanguages` order, then `Comment`. Language headers use Localo display names (`Chinese (Traditional)`); enum names (`ChineseTraditional`) are also accepted.
+- Line breaks stay as `<br>` inside cells.
+- Import requires UTF-8. Ask reviewers to use Google Sheets or Excel's **CSV UTF-8** format; files in other encodings (such as Shift_JIS) are rejected with an error.
+- Excel may convert cells starting with `+`, `-` or `=` (for example `+{0}`) into formulas. Such damage shows up in the dry-run change list and placeholder warnings.
+
+### Import rules
+
+| Situation | Result |
+| --- | --- |
+| Key exists | Selected cells are overwritten when they differ |
+| Key is in the tables but not in the CSV | Left unchanged (rows are never deleted) |
+| Key is in the CSV but not in any table | Skipped and reported; added only with `AddMissingKeys = true` and a `Table` value |
+| `Table` value disagrees with the key's table | Error |
+| Unknown or disabled column, duplicate key, malformed CSV | Error |
+| Baseline given, reviewer left the cell as exported | Skipped, so edits made after the export are kept |
+| Baseline given, both the table and the reviewer changed the cell | Conflict: reported and left unchanged |
+
+Any error aborts the whole import before anything is written. Warnings flag cleared text, raw line breaks, and placeholders (`{0}`) that differ from the current English text, which usually means the CSV is older than the code.
+
+### Batch mode
+
+When the project is not open in an Editor:
+
+```text
+Unity -batchmode -quit -projectPath <project> -executeMethod Localo.Editor.LocaloCsvCommandLine.Export -localoCsv review.csv
+Unity -batchmode -quit -projectPath <project> -executeMethod Localo.Editor.LocaloCsvCommandLine.Import -localoCsv review-done.csv -localoBaselineCsv review.csv -localoDryRun
+```
+
+Import flags: `-localoDryRun`, `-localoLanguages Japanese,Korean`, `-localoNoComments`, `-localoAddMissingKeys`, `-localoBaselineCsv <path>`. The process exits with code 1 when the import reports errors.
+
 ## AI project skill
 
 The Setup tab can install a project-local Localo skill at `.agents/skills/localo`. Installation is opt-in and does not modify global AI configuration. Updating the skill asks before replacing existing files.
