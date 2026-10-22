@@ -18,7 +18,9 @@ string text = LocaloManager.Instance.GetLocalizedString("MY_KEY");
 
 ## 翻訳設定と行の文脈
 
-`Setup → Table → Translation → Glossary` の順にタブが並びます。「Translation」では、シートごとの文章の種類（Text Type）と自由記述の翻訳方針を編集できます。「Glossary」では、全シート共通の用語集（原文・各言語の正式表記・意味や補足）を編集できます。使い方とショートカットの一覧は、ツールバー右端の「?」ボタンで別ウィンドウ（Localo Guide）に表示します。
+SetupのSource Languageで翻訳元を選ぶと、その言語がTableとGlossaryの先頭に固定されます。Source Termも選んだ言語で記入し、各言語の列に正式表記を入力します。翻訳元を切り替えても既存の文章やSource Termは書き換えません。Englishは実行時のフォールバックとして有効なまま保持します。AI向けJSONの`sourceLanguage`に翻訳元を含め、CSVのプレースホルダー比較もこの言語を使います。
+
+`Setup → Glossary → Table → Translation` の順にタブが並びます。「Translation」では、シートごとの文章の種類（Text Type）と自由記述の翻訳方針を編集できます。「Glossary」では、全シート共通の用語集をTableと同じ表形式・検索・キーボード操作・TSVコピー＆ペーストで編集できます。列はSource Term・各言語の正式表記・Notesです。列の表示・順番・幅はTableと共有し、既存の用語集データをそのまま使用します。右端の×で用語を行ごと削除でき、Undoで復元できます。AIは翻訳前に用語集全体を読み、翻訳後に登録用語が守られているか確認します。使い方とショートカットの一覧は、ツールバー右端の「?」ボタンで別ウィンドウ（Localo Guide）に表示します。
 
 文脈は2段で持ちます。シートは文章の種類と声（話者・口調）を持つ大きい文脈で、話者や基本の口調が変わる場合はシートを分けます。各行は、表示される場面（Scene）と、文章が入る器（Display Space：部品・幅・行数・表示時間など）を細かい文脈として持ちます。場面と器はAIがキーをもとに調査して書き、人間は確認します。
 
@@ -40,7 +42,7 @@ string rowContext = LocaloTranslationContext.ExportRowToString(table, "MY_KEY");
 LocaloTranslationContext.SetRowContext(table, "MY_KEY", sceneText, displaySpaceText);
 ```
 
-場面は `LocalizationRow.aiScene`、器は `LocalizationRow.aiDisplaySpace`、文章の種類は `LocalizationTable.textType`、シートの方針は `LocalizationTable.translationInstructions`、用語集は `LocalizationSettings.glossary` に保存します。`SetRowContext` は `null` を渡した項目を変更しません。変更はUndoに対応します。旧版の `aiResearch` の内容は `aiScene` として読み込まれ、`SetResearch` は場面を保存する互換APIとして残しています。CSVは従来の列構成を維持し、文章の種類・方針・用語集・場面・器の受け渡しにはJSON APIを使います。JSONのスキーマはversion 4です。
+場面は `LocalizationRow.aiScene`、器は `LocalizationRow.aiDisplaySpace`、文章の種類は `LocalizationTable.textType`、シートの方針は `LocalizationTable.translationInstructions`、用語集は `LocalizationSettings.glossary` に保存します。`SetRowContext` は `null` を渡した項目を変更しません。変更はUndoに対応します。旧版の `aiResearch` の内容は `aiScene` として読み込まれ、`SetResearch` は場面を保存する互換APIとして残しています。CSVは従来の列構成を維持し、文章の種類・方針・用語集・場面・器の読み出しにはJSON出力APIを使います。場面・器の保存にはSetRowContextを使い、用語集専用の取り込みAPIはありません。JSONのスキーマはversion 5です。
 
 ### 言語別ガイドと口調の統一
 

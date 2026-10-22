@@ -29,7 +29,7 @@ https://github.com/TakashiHamada/localo.git?path=/Packages/com.takashihamada.loc
 3. Localo creates `Assets/LocaloAssets/Resources/LocalizationSettings.asset` and `Assets/LocaloAssets/Tables/MainTable.asset`.
 4. Enable the project languages and edit translations on the **Table** tab.
 
-English is the base language and always stays first. Project translation data remains under `Assets/LocaloAssets`; updating the package does not replace it.
+Choose the translation source in Setup > Source Language. It stays first and visible in both Table and Glossary. English remains enabled as the runtime fallback. Project translation data remains under `Assets/LocaloAssets`; updating the package does not replace it.
 
 ## Bind TextMesh Pro text
 
@@ -69,18 +69,20 @@ Keep platform SDK code in the consuming project. Localo itself only depends on U
 
 ## Editor tabs
 
-The **Window > Localo** window has four tabs. The `?` button at the right end of the toolbar opens the Localo Guide window with all shortcuts.
+The **Window > Localo** window has four tabs in this order: Setup → Glossary → Table → Translation. The `?` button at the right end of the toolbar opens the Localo Guide window with all shortcuts.
 
-- **Setup**: create the settings, register tables (sheets), choose languages and column widths, install the AI project skill.
+- **Setup**: create the settings, choose the Source Language, register tables (sheets), choose languages and column widths, install the AI project skill.
+- **Glossary**: edit project-wide terms in the same grid as Table, using **Source Term**, language columns, and **Notes**. Search, keyboard editing and TSV clipboard operations work the same as Table; each tab keeps its own search, selection and scroll position. Visible languages, column order and widths are shared. Use the selected source language for Source Term (the term or row identifier), and enter actual official text in each language column. The rightmost × deletes the term; Undo restores it. Existing glossary data is retained. AI instructions require reading the whole glossary before translation and checking terminology afterward.
 - **Table**: edit keys, translations and the human `Comment` in a keyboard-first grid. The icon right of `Comment` (the details icon) opens the row's AI-researched Scene and Display Space.
-- **Translation**: per sheet, choose the Text Type, write the Translation Guidelines (speaker, personality, tone), and set the **Translator Lock**. Locked language columns are shown with `■` in the Table tab and are never changed by AI. **Language Guidelines** previews read-only guidance for eight target languages, including their target regions; common rules and sources are collapsible. **Copy All Context as JSON** includes the same guidance for enabled languages alongside the context for AI translation (`Localo.Editor.LocaloTranslationContext`, schema version 4).
-- **Glossary**: project-wide terms with their official spelling per language and notes.
+- **Translation**: per sheet, choose the Text Type, write the Translation Guidelines (speaker, personality, tone), and set the **Translator Lock**. Locked language columns are shown with `■` in the Table tab and are never changed by AI. **Language Guidelines** previews read-only guidance for eight target languages, including their target regions; common rules and sources are collapsible. **Copy All Context as JSON** includes the same guidance for enabled languages alongside the context for AI translation (`Localo.Editor.LocaloTranslationContext`, schema version 5).
 
 The shared guide data lives in `Editor/Resources/LocaloLanguageGuidelines.json` inside the package. The defaults are US English, Korean (South Korea), Simplified Chinese (mainland China), Traditional Chinese (Taiwan), German (Germany), French (France), Latin American Spanish (`es-419`), and Brazilian Portuguese (`pt-BR`). Project-specific instructions and translator-approved text take priority. Before translating, the AI should read the whole sheet, infer a tone for each language and speaker/listener relationship, keep that tone consistent, and report its inferred policy and unresolved conflicts.
 
 Both context export APIs accept an optional `targetLanguages` argument to limit the included language guides to enabled targets, for example `LocaloTranslationContext.ExportToString(targetLanguages: new[] { SystemLanguage.Korean })`. This filters only the guides; source text, glossary entries, and translator examples remain available. Confirm the whole target sheet before using row-only JSON to translate individual lines. The preview language selection does not change project settings or the languages included by **Copy All Context as JSON**.
 
-## Table shortcuts
+The context JSON includes `sourceLanguage`. AI translates from that language to the other languages, preserves the source text, and reports missing source text. Changing the source language reorders columns without rewriting existing translations or Source Terms. CSV placeholder warnings also compare against the selected source.
+
+## Table and Glossary shortcuts
 
 | Keys | Action |
 | --- | --- |
@@ -88,7 +90,8 @@ Both context export APIs accept an optional `targetLanguages` argument to limit 
 | `Shift` + movement | Extend selection |
 | `i` or double-click | Edit a cell |
 | `Enter` or `Esc` | Commit editing |
-| `Enter` or `i` on the details icon | Open the row's Scene and Display Space |
+| `Enter` or `i` on the details icon | Open the row's Scene and Display Space (Table) |
+| Click `×`, or select it and press `Enter` / `i` | Delete the term; Undo restores it (Glossary) |
 | `Esc` `Esc` | Clear the search filter |
 | `x`, `Delete`, `Backspace` | Clear selected cells |
 | `o` | Insert a row below |
@@ -153,7 +156,7 @@ report = LocaloCsv.ImportFromFile("Localization/review-done.csv", options);
 | Empty `Key` with text, same language under two headers, or a table key with leading/trailing spaces | Error |
 | CSV file not found or not UTF-8 | Error |
 
-Any error aborts the whole import before anything is written. Warnings flag cleared text, raw line breaks, and placeholders (`{0}`) that differ from the current English text, which usually means the CSV is older than the code.
+Any error aborts the whole import before anything is written. Warnings flag cleared text, raw line breaks, and placeholders (`{0}`) that differ from the current source-language text, which usually means the CSV is older than the code.
 
 ### Batch mode
 

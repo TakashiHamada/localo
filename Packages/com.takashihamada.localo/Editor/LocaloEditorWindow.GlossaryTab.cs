@@ -1,10 +1,7 @@
-// =============================================================================
-// LocaloEditorWindow.GlossaryTab.cs — 全シート共通の用語集
-// =============================================================================
-// LocalizationSettings.glossary を編集する。内容は LocaloTranslationContext のJSONに含まれ、
-// 全シートの翻訳でAIが参照する。
-// =============================================================================
-
+// GlossaryはTableと同じグリッドを使い、保存先だけLocalizationSettings.glossaryに切り替える。
+// 既存アセットの形式は変えず、非表示の言語の表記も保持する。
+using System.Collections.Generic;
+using Localo.Runtime;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,100 +9,136 @@ namespace Localo.Editor
 {
     public sealed partial class LocaloEditorWindow
     {
-        private const float GlossaryRemoveButtonWidth = 64f;
+        private bool IsGlossaryGrid => _currentTab == Tab.Glossary;
+        private Object GridAsset => IsGlossaryGrid ? (Object)_settings : _table;
+        private int GridRowCount => IsGlossaryGrid
+            ? _settings?.glossary?.Count ?? 0
+            : _table?.rows?.Count ?? 0;
 
-        private Vector2 _glossaryScrollPosition;
-
-        private void DrawGlossaryTab()
+        // 検索・選択・スクロールをタブごとに保持し、別のデータへの編集持ち越しを防ぐ。
+        private sealed class GridViewState
         {
-            if (_settings == null)
+            public string Search = string.Empty;
+            public int Row, Column, AnchorRow, AnchorColumn;
+            public Vector2 Scroll;
+        }
+
+        private readonly GridViewState _tableGridView = new GridViewState();
+        private readonly GridViewState _glossaryGridView = new GridViewState();
+
+        private void SwitchGridView(bool toGlossary)
+        {
+            GridViewState previous = IsGlossaryGrid ? _glossaryGridView : _tableGridView;
+            previous.Search = _searchText;
+            previous.Row = _selectedRow;
+            previous.Column = _selectedCol;
+            previous.AnchorRow = _selectionAnchorRow;
+            previous.AnchorColumn = _selectionAnchorCol;
+            previous.Scroll = _scrollPosition;
+
+            GridViewState next = toGlossary ? _glossaryGridView : _tableGridView;
+            _searchText = next.Search;
+            _selectedRow = next.Row;
+            _selectedCol = next.Column;
+            _selectionAnchorRow = next.AnchorRow;
+            _selectionAnchorCol = next.AnchorColumn;
+            _scrollPosition = next.Scroll;
+            _filteredIndices.Clear();
+            _pendingOpType = PendingOpType.None;
+            _pendingOpTargetRealRow = -1;
+            _pendingPasteRows = null;
+            _pendingSelectRealRow = -1;
+            _collapseSelectionOnResolve = false;
+            _isDragSelecting = false;
+            _scrollToSelectionPending = true;
+        }
+
+        private bool IsGlossaryRemoveColumnSelected() => IsGlossaryGrid && _selectedCol == GetEditableColumnCount();
+
+        private void DrawGlossaryRemoveButton(int filteredRow, float rowHeight)
+        {
+            Rect rect = GUILayoutUtility.GetRect(DetailsColumnWidth, rowHeight,
+                GUILayout.Width(DetailsColumnWidth), GUILayout.Height(rowHeight));
+            int column = GetEditableColumnCount();
+            if (Event.current.type == EventType.Repaint)
             {
-                EditorGUILayout.HelpBox("SetupでQuick Setupを実行してください。", MessageType.Info);
+                EditorGUI.DrawRect(rect, IsCellInSelection(filteredRow, column) ? SelectedCellBackground : TableCellBackground);
+                if (filteredRow == _selectedRow && _selectedCol == column) _selectedCellRect = rect;
+            }
+            if (GUI.Button(new Rect(rect.x + 2f, rect.y + 1f, rect.width - 4f, RowHeight - 2f),
+                    new GUIContent("×", "この用語を行ごと削除します。Undoで元に戻せます。"), EditorStyles.miniButton))
+            {
+                if (_mode == EditorMode.Insert) CommitInsertAndReturnToNormal();
+                _selectedRow = _selectionAnchorRow = filteredRow;
+                _selectedCol = _selectionAnchorCol = column;
+                _isDragSelecting = false;
+                QueueDeleteSelectedRow(); // 行数の変更は次のLayoutまで保留する。
+                GUI.FocusControl(null);
+            }
+            DrawCellBorder(rect);
+        }
+
+        private bool HasGridRow(int row)
+        {
+            if (row < 0 || row >= GridRowCount) return false;
+            return IsGlossaryGrid ? _settings.glossary[row] != null : _table.rows[row] != null;
+        }
+
+        private List<LanguageData> GetGridTranslations(int row) => IsGlossaryGrid
+            ? _settings.glossary[row].translations
+            : _table.rows[row].translations;
+
+        private static string GetGlossaryText(LocaloGlossaryEntry entry, SystemLanguage language)
+        {
+            if (entry.translations != null)
+                foreach (LanguageData translation in entry.translations)
+                    if (translation.language == language) return translation.text ?? string.Empty;
+            return string.Empty;
+        }
+
+        private string ReadGlossaryCell(int row, int column)
+        {
+            LocaloGlossaryEntry entry = _settings.glossary[row];
+            int languageCount = GetVisibleLanguageCount();
+            if (column == 0) return entry.source;
+            if (column >= 1 && column <= languageCount)
+                return GetGlossaryText(entry, GetVisibleLanguageAt(column - 1));
+            return column == languageCount + 1 ? entry.notes : string.Empty;
+        }
+
+        private void WriteGlossaryCell(int row, int column, string value)
+        {
+            LocaloGlossaryEntry entry = _settings.glossary[row];
+            int languageCount = GetVisibleLanguageCount();
+            if (column == 0) entry.source = value;
+            else if (column == languageCount + 1) entry.notes = value;
+            else if (column >= 1 && column <= languageCount)
+            {
+                SystemLanguage language = GetVisibleLanguageAt(column - 1);
+                if (entry.translations == null) entry.translations = new List<LanguageData>();
+                var translation = new LanguageData { language = language, text = value };
+                for (int i = 0; i < entry.translations.Count; i++)
+                {
+                    if (entry.translations[i].language != language) continue;
+                    entry.translations[i] = translation;
+                    return;
+                }
+                entry.translations.Add(translation);
+            }
+        }
+
+        private void InsertEmptyGridRow(int index)
+        {
+            if (!IsGlossaryGrid)
+            {
+                _table.rows.Insert(index, CreateEmptyRow());
                 return;
             }
-
-            using (var scroll = new EditorGUILayout.ScrollViewScope(_glossaryScrollPosition))
-            {
-                _glossaryScrollPosition = scroll.scrollPosition;
-                EditorGUILayout.LabelField("Glossary", EditorStyles.boldLabel);
-                EditorGUILayout.HelpBox(
-                    "プロジェクト内の固有名詞や共通用語について、各言語の正式表記と意味・表記上の注意点を登録します。\n" +
-                    "登録した内容は、全シートの翻訳で参照します。",
-                    MessageType.None);
-
-                using var settingsObject = new SerializedObject(_settings);
-                settingsObject.Update();
-                SerializedProperty glossary = settingsObject.FindProperty("glossary");
-                for (int i = 0; i < glossary.arraySize; i++)
-                {
-                    SerializedProperty entry = glossary.GetArrayElementAtIndex(i);
-                    using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
-                    {
-                        using (new EditorGUILayout.HorizontalScope())
-                        {
-                            EditorGUILayout.PropertyField(entry.FindPropertyRelative("source"), new GUIContent("Source Term", "正式表記を揃えたい固有名詞や共通用語を、原文の言語（翻訳元）での表記で記入します。"));
-                            if (GUILayout.Button(new GUIContent("Remove", "この用語を削除します。Undoで元に戻せます。"), GUILayout.Width(GlossaryRemoveButtonWidth)))
-                            {
-                                glossary.DeleteArrayElementAtIndex(i);
-                                SaveGlossarySettings(settingsObject);
-                                GUIUtility.ExitGUI();
-                            }
-                        }
-
-                        SerializedProperty translations = entry.FindPropertyRelative("translations");
-                        if (_settings.enabledLanguages != null)
-                        {
-                            foreach (SystemLanguage language in _settings.enabledLanguages)
-                            {
-                                SerializedProperty text = FindGlossaryText(translations, language);
-                                string label = Localo.Runtime.LocalizationLanguages.GetDisplayName(language);
-                                string current = text?.stringValue ?? string.Empty;
-                                string value = EditorGUILayout.TextField(label, current);
-                                if (value != current)
-                                {
-                                    if (text != null) text.stringValue = value;
-                                    else
-                                    {
-                                        int slot = translations.arraySize++;
-                                        SerializedProperty translation = translations.GetArrayElementAtIndex(slot);
-                                        translation.FindPropertyRelative("language").intValue = (int)language;
-                                        translation.FindPropertyRelative("text").stringValue = value;
-                                    }
-                                }
-                            }
-                        }
-                        EditorGUILayout.PropertyField(entry.FindPropertyRelative("notes"), new GUIContent("Notes", "用語の意味・背景・表記上の注意点を記入します。"));
-                    }
-                }
-
-                if (GUILayout.Button(new GUIContent("+ Add Term", "全シート共通の用語集に項目を追加します。")))
-                {
-                    int index = glossary.arraySize++;
-                    SerializedProperty entry = glossary.GetArrayElementAtIndex(index);
-                    entry.FindPropertyRelative("source").stringValue = string.Empty;
-                    entry.FindPropertyRelative("notes").stringValue = string.Empty;
-                    entry.FindPropertyRelative("translations").ClearArray();
-                    SaveGlossarySettings(settingsObject);
-                    GUIUtility.ExitGUI();
-                }
-                SaveGlossarySettings(settingsObject);
-            }
-        }
-
-        private static SerializedProperty FindGlossaryText(SerializedProperty translations, SystemLanguage language)
-        {
-            for (int i = 0; i < translations.arraySize; i++)
-            {
-                SerializedProperty translation = translations.GetArrayElementAtIndex(i);
-                if (translation.FindPropertyRelative("language").intValue == (int)language)
-                    return translation.FindPropertyRelative("text");
-            }
-            return null;
-        }
-
-        private void SaveGlossarySettings(SerializedObject settingsObject)
-        {
-            if (settingsObject.ApplyModifiedProperties()) AssetDatabase.SaveAssetIfDirty(_settings);
+            if (_settings.glossary == null) _settings.glossary = new List<LocaloGlossaryEntry>();
+            var entry = new LocaloGlossaryEntry();
+            foreach (SystemLanguage language in GetAllTableLanguages())
+                entry.translations.Add(new LanguageData { language = language, text = string.Empty });
+            _settings.glossary.Insert(index, entry);
         }
     }
 }

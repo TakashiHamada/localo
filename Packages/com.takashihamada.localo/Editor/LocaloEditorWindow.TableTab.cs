@@ -1,7 +1,7 @@
 // =============================================================================
 // LocaloEditorWindow.TableTab.cs — Screen B: main edit screen (Excel-like grid)
 // =============================================================================
-// Handles switching the target LocalizationTable, the search filter, and grid drawing.
+// TableとGlossaryの検索・描画・セル操作を共有する。保存先の切り替えはGlossaryTab側のヘルパーが担当する。
 //
 // The grid is intentionally designed so that Normal mode renders cells as
 // non-interactive labels, and only the selected cell becomes a real TextField
@@ -58,7 +58,8 @@ namespace Localo.Editor
         private int _pendingPasteStartFilteredRow;
         private int _pendingPasteStartCol;
 
-        private void DrawTableTab()
+        // TableとGlossaryの共通描画。セルの読み書きと保存先はグリッドのデータヘルパーに委ねる。
+        private void DrawGridTab()
         {
             // Ends a mouse-drag range selection regardless of which cell (if any) the mouse is
             // currently over — a MouseUp outside every cell rect (e.g. released past the last row)
@@ -76,7 +77,7 @@ namespace Localo.Editor
                 return;
             }
 
-            if (_table == null)
+            if (!IsGlossaryGrid && _table == null)
             {
                 EditorGUILayout.HelpBox("SetupのRegistered Tablesにある「+ Add Table」で、編集するシートを作成してください。", MessageType.Info);
                 return;
@@ -120,7 +121,7 @@ namespace Localo.Editor
             if (Event.current.type == EventType.Layout)
             {
                 RecomputeFilteredIndices();
-                if (_duplicateKeysDirty) RecomputeDuplicateKeys();
+                if (!IsGlossaryGrid && _duplicateKeysDirty) RecomputeDuplicateKeys();
                 ResolvePendingSelectionAndClamp();
             }
 
@@ -220,9 +221,18 @@ namespace Localo.Editor
         {
             using (new EditorGUILayout.HorizontalScope())
             {
-                DrawSheetPopup(null, GUILayout.Width(SheetPopupWidth));
+                if (IsGlossaryGrid)
+                {
+                    if (GUILayout.Button(new GUIContent("+ Add Term", "用語を追加します。oキーでも選択行の下に追加できます。"),
+                            GUILayout.Width(GetKeyColumnWidth())))
+                    {
+                        if (_mode == EditorMode.Insert) CommitInsertAndReturnToNormal();
+                        QueueInsertRowBelow();
+                    }
+                }
+                else DrawSheetPopup(null, GUILayout.Width(SheetPopupWidth));
 
-                if (_table != null)
+                if (GridAsset != null)
                 {
                     Rect searchRect = EditorGUILayout.GetControlRect(false, EditorGUIUtility.singleLineHeight, GUILayout.ExpandWidth(true));
                     if (HasActiveSearchFilter() && Event.current.type == EventType.Repaint)
@@ -270,36 +280,16 @@ namespace Localo.Editor
 
         private int FindFirstSearchHitColumn(string searchText)
         {
-            if (_table?.rows == null) return -1;
-
             string query = searchText?.Trim();
             if (string.IsNullOrEmpty(query)) return -1;
 
-            foreach (var row in _table.rows)
+            for (int row = 0; row < GridRowCount; row++)
             {
-                if (row == null || !RowMatchesQuery(row, query)) continue;
-                int col = FindMatchingVisibleColumn(row, query);
-                return col >= 0 ? col : 0;
+                if (!HasGridRow(row) || !GridRowMatchesQuery(row, query)) continue;
+                for (int column = 0; column < GetEditableColumnCount(); column++)
+                    if (ContainsSearchQuery(ReadCellValue(row, column), query)) return column;
+                return 0; // 非表示列だけに一致した場合は先頭列を選ぶ。
             }
-
-            return -1;
-        }
-
-        private int FindMatchingVisibleColumn(LocalizationRow row, string query)
-        {
-            if (!string.IsNullOrEmpty(row.key) && row.key.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
-                return 0;
-
-            int langCount = GetVisibleLanguageCount();
-            for (int i = 0; i < langCount; i++)
-            {
-                string text = _table.GetText(row, GetVisibleLanguageAt(i));
-                if (!string.IsNullOrEmpty(text) && text.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
-                    return 1 + i;
-            }
-
-            if (!string.IsNullOrEmpty(row.comment) && row.comment.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
-                return 1 + langCount;
 
             return -1;
         }
@@ -307,14 +297,12 @@ namespace Localo.Editor
         private void RecomputeFilteredIndices()
         {
             _filteredIndices.Clear(); // reuse the list — this runs every Layout pass
-            if (_table?.rows == null) return;
 
             string query = _searchText?.Trim();
-            for (int i = 0; i < _table.rows.Count; i++)
+            for (int i = 0; i < GridRowCount; i++)
             {
-                var row = _table.rows[i];
-                if (row == null) continue;
-                if (string.IsNullOrEmpty(query) || RowMatchesQuery(row, query))
+                if (!HasGridRow(i)) continue;
+                if (string.IsNullOrEmpty(query) || GridRowMatchesQuery(i, query))
                     _filteredIndices.Add(i);
             }
         }
@@ -344,17 +332,20 @@ namespace Localo.Editor
             }
         }
 
-        private static bool RowMatchesQuery(LocalizationRow row, string query)
+        private static bool ContainsSearchQuery(string text, string query) =>
+            !string.IsNullOrEmpty(text) && text.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
+
+        private bool GridRowMatchesQuery(int row, string query)
         {
-            if (!string.IsNullOrEmpty(row.key) && row.key.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
+            if (ContainsSearchQuery(ReadCellValue(row, 0), query) ||
+                ContainsSearchQuery(ReadCellValue(row, GetEditableColumnCount() - 1), query))
                 return true;
-            if (!string.IsNullOrEmpty(row.comment) && row.comment.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
-                return true;
-            if (row.translations != null)
+            List<LanguageData> translations = GetGridTranslations(row);
+            if (translations != null)
             {
-                foreach (var t in row.translations)
+                foreach (var t in translations)
                 {
-                    if (!string.IsNullOrEmpty(t.text) && t.text.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
+                    if (ContainsSearchQuery(t.text, query))
                         return true;
                 }
             }
@@ -381,7 +372,8 @@ namespace Localo.Editor
                 GUIStyle.none, GUIStyle.none, GUIStyle.none, GUILayout.Height(HeaderHeight));
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
             {
-                DrawHeaderCell("Key", GetKeyColumnWidth(), KeyHeaderBackground);
+                DrawHeaderCell(IsGlossaryGrid ? "Source Term" : "Key", GetKeyColumnWidth(), KeyHeaderBackground,
+                    IsGlossaryGrid ? $"用語やこの行の意味を、翻訳元の{LocalizationLanguages.GetDisplayName(_settings.translationSourceLanguage)}で記入します。正式な表記は各言語の列に記入します。" : null);
 
                 int langCount = GetVisibleLanguageCount();
                 for (int i = 0; i < langCount; i++)
@@ -390,7 +382,8 @@ namespace Localo.Editor
                     DrawHeaderCell(label, GetLanguageColumnWidth(), LanguageHeaderBackground);
                 }
 
-                DrawHeaderCell("Comment", GetCommentColumnWidth(), CommentHeaderBackground, "人間が書く翻訳メモです。AIは読むだけで編集しません。");
+                DrawHeaderCell(IsGlossaryGrid ? "Notes" : "Comment", GetCommentColumnWidth(), CommentHeaderBackground,
+                    IsGlossaryGrid ? "用語の意味・背景・表記上の注意点を記入します。" : "人間が書く翻訳メモです。AIは読むだけで編集しません。");
                 DrawHeaderCell(string.Empty, DetailsColumnWidth, CommentHeaderBackground);
                 GUILayout.Space(VerticalScrollbarWidth);
             }
@@ -408,25 +401,23 @@ namespace Localo.Editor
 
         private void DrawGridRow(int filteredIdx, int realRow)
         {
-            var row = _table.rows[realRow];
-
             bool isEditingThisRow = _mode == EditorMode.Insert && filteredIdx == _selectedRow;
-            float rowHeight = isEditingThisRow ? RowHeight : CalculateStoredRowHeight(row);
+            float rowHeight = isEditingThisRow ? RowHeight : CalculateStoredRowHeight(realRow);
 
             using (new EditorGUILayout.HorizontalScope(GUILayout.Height(rowHeight)))
             {
-                DrawCell(filteredIdx, realRow, 0, row.key, GetKeyColumnWidth(), rowHeight);
+                DrawCell(filteredIdx, realRow, 0, ReadCellValue(realRow, 0), GetKeyColumnWidth(), rowHeight);
 
                 int langCount = GetVisibleLanguageCount();
                 for (int i = 0; i < langCount; i++)
                 {
-                    SystemLanguage lang = GetVisibleLanguageAt(i);
-                    string value = _table.GetText(row, lang);
+                    string value = ReadCellValue(realRow, 1 + i);
                     DrawCell(filteredIdx, realRow, 1 + i, value, GetLanguageColumnWidth(), rowHeight);
                 }
 
-                DrawCell(filteredIdx, realRow, 1 + langCount, row.comment, GetCommentColumnWidth(), rowHeight);
-                DrawRowDetailsButton(filteredIdx, row, rowHeight);
+                DrawCell(filteredIdx, realRow, 1 + langCount, ReadCellValue(realRow, 1 + langCount), GetCommentColumnWidth(), rowHeight);
+                if (IsGlossaryGrid) DrawGlossaryRemoveButton(filteredIdx, rowHeight);
+                else DrawRowDetailsButton(filteredIdx, _table.rows[realRow], rowHeight);
             }
         }
 
@@ -472,18 +463,11 @@ namespace Localo.Editor
             return hasRowContext ? _detailsButtonFilledContent : _detailsButtonEmptyContent;
         }
 
-        private float CalculateStoredRowHeight(LocalizationRow row)
+        private float CalculateStoredRowHeight(int realRow)
         {
-            int lineCount = CountStoredDisplayLines(row.key);
-
-            int langCount = GetVisibleLanguageCount();
-            for (int i = 0; i < langCount; i++)
-            {
-                SystemLanguage lang = GetVisibleLanguageAt(i);
-                lineCount = Mathf.Max(lineCount, CountStoredDisplayLines(_table.GetText(row, lang)));
-            }
-
-            lineCount = Mathf.Max(lineCount, CountStoredDisplayLines(row.comment));
+            int lineCount = 1;
+            for (int column = 0; column < GetEditableColumnCount(); column++)
+                lineCount = Mathf.Max(lineCount, CountStoredDisplayLines(ReadCellValue(realRow, column)));
             return RowHeight * lineCount;
         }
 
@@ -652,13 +636,13 @@ namespace Localo.Editor
 
             // Overlaid last (on top of the normal/selected background) so a duplicate Key cell stays
             // visibly red even while selected. Only the Key column (col 0) participates.
-            bool isDuplicateKeyCell = col == 0 && !string.IsNullOrEmpty(displayValue) && _duplicateKeys.Contains(displayValue);
+            bool isDuplicateKeyCell = !IsGlossaryGrid && col == 0 && !string.IsNullOrEmpty(displayValue) && _duplicateKeys.Contains(displayValue);
             if (isDuplicateKeyCell && Event.current.type == EventType.Repaint)
                 EditorGUI.DrawRect(rect, DuplicateKeyBackground);
 
             GUIStyle labelStyle = GetCellLabelStyle();
             string fullDisplayText = FormatStoredTextForCellDisplay(displayValue);
-            bool translatorCell = col >= 1 && col <= GetVisibleLanguageCount() &&
+            bool translatorCell = !IsGlossaryGrid && col >= 1 && col <= GetVisibleLanguageCount() &&
                 _table.IsTranslatorLanguage(GetVisibleLanguageAt(col - 1));
             if (translatorCell) fullDisplayText = TranslatorLockMarker + fullDisplayText;
             _cellContent.text = BuildEllipsizedCellText(fullDisplayText, rect.width, labelStyle);
@@ -803,11 +787,11 @@ namespace Localo.Editor
         /// </summary>
         private void ClearSelectedCells()
         {
-            if (_table == null || _filteredIndices.Count == 0) return;
+            if (GridAsset == null || _filteredIndices.Count == 0) return;
 
             if (!TryGetEditableSelectionBounds(out int rowLo, out int rowHi, out int colLo, out int colHi)) return;
 
-            Undo.RecordObject(_table, "Clear Localization Cells");
+            Undo.RecordObject(GridAsset, IsGlossaryGrid ? "Clear Glossary Cells" : "Clear Localization Cells");
             bool anyChanged = false;
             for (int r = rowLo; r <= rowHi; r++)
             {
@@ -822,8 +806,7 @@ namespace Localo.Editor
 
             if (anyChanged)
             {
-                EditorUtility.SetDirty(_table);
-                AssetDatabase.SaveAssets();
+                SaveGridAsset();
             }
             Repaint();
         }
@@ -842,7 +825,7 @@ namespace Localo.Editor
         /// </summary>
         private void CopySelectedCellsToClipboard()
         {
-            if (_table == null || _filteredIndices.Count == 0) return;
+            if (GridAsset == null || _filteredIndices.Count == 0) return;
 
             if (!TryGetEditableSelectionBounds(out int rowLo, out int rowHi, out int colLo, out int colHi)) return;
 
@@ -868,7 +851,7 @@ namespace Localo.Editor
         /// </summary>
         private void PasteClipboardIntoSelection()
         {
-            if (_table == null || _filteredIndices.Count == 0) return;
+            if (GridAsset == null || _filteredIndices.Count == 0) return;
 
             string clipboard = EditorGUIUtility.systemCopyBuffer;
             if (string.IsNullOrEmpty(clipboard)) return;
@@ -890,7 +873,7 @@ namespace Localo.Editor
                 return;
             }
 
-            Undo.RecordObject(_table, "Paste Localization Cells");
+            Undo.RecordObject(GridAsset, IsGlossaryGrid ? "Paste Glossary Cells" : "Paste Localization Cells");
             bool anyChanged = false;
 
             if (isSingleCellClipboard)
@@ -929,22 +912,21 @@ namespace Localo.Editor
 
             if (anyChanged)
             {
-                EditorUtility.SetDirty(_table);
-                AssetDatabase.SaveAssets();
+                SaveGridAsset();
             }
             Repaint();
         }
 
         private void ApplyPendingPaste()
         {
-            if (_pendingPasteRows == null || _table == null) return;
+            if (_pendingPasteRows == null || GridAsset == null) return;
 
             List<List<string>> rowsToPaste = _pendingPasteRows;
             _pendingPasteRows = null;
             int colCount = GetEditableColumnCount();
             if (_pendingPasteStartCol >= colCount) return;
 
-            Undo.RecordObject(_table, "Paste Localization Cells");
+            Undo.RecordObject(GridAsset, IsGlossaryGrid ? "Paste Glossary Cells" : "Paste Localization Cells");
             bool addedRows = false;
             int firstTargetRealRow = -1;
 
@@ -958,8 +940,8 @@ namespace Localo.Editor
                 }
                 else
                 {
-                    realRow = _table.rows.Count;
-                    _table.rows.Add(CreateEmptyRow());
+                    realRow = GridRowCount;
+                    InsertEmptyGridRow(realRow);
                     addedRows = true;
                 }
 
@@ -976,8 +958,7 @@ namespace Localo.Editor
             if (addedRows)
                 _searchText = string.Empty;
 
-            EditorUtility.SetDirty(_table);
-            AssetDatabase.SaveAssets();
+            SaveGridAsset();
             _pendingSelectRealRow = firstTargetRealRow;
             _collapseSelectionOnResolve = true;
             _scrollToSelectionPending = true;

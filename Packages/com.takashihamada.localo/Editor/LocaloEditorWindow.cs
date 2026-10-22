@@ -2,7 +2,7 @@
 // LocaloEditorWindow.cs — main entry point for Localo
 // =============================================================================
 // Launched from Window/Localo.
-// Setup、Table、Translation、Glossaryの各タブを切り替える。ツールバー右端の「?」ボタンでGuideウィンドウを開く。
+// Setup、Glossary、Table、Translationの各タブを切り替える。ツールバー右端の「?」ボタンでGuideウィンドウを開く。
 // This file owns window state and OnGUI dispatch, plus the Vim-like keybinding
 // event handling core. Per-tab drawing lives in
 // LocaloEditorWindow.SetupTab.cs / .TableTab.cs / .TranslationTab.cs / .GlossaryTab.cs.
@@ -13,7 +13,7 @@
 //      table switching, and the search-filter recompute — is never applied
 //      mid-OnGUI. The intent is queued and applied only during an EventType.Layout
 //      pass (ApplyPendingStructuralChanges here, and the Layout-gated
-//      RecomputeFilteredIndices call in DrawTableTab). IMGUI caches layout per
+//      RecomputeFilteredIndices call in DrawGridTab). IMGUI caches layout per
 //      Layout pass; changing the control count during the paired event pass throws
 //      "Getting control N's position in a group with only M controls".
 //   2. Character keys (h/j/k/l/i/o/x/d) fire KeyDown twice (a keyCode-only event and
@@ -22,7 +22,7 @@
 //      handled via keyCode instead, to avoid colliding with the character-based path.
 //   3. Entering Insert mode is done via 'i' or double-click. It focuses the
 //      target cell via GUI.SetNextControlName followed by EditorGUI.FocusTextInControl,
-//      reasserted every pass until the focus is confirmed (see DrawTableTab).
+//      reasserted every pass until the focus is confirmed (see DrawGridTab).
 //      Conversely, once focus is confirmed, Insert mode requires focus to STAY on the
 //      editing cell — if it wanders (mouse click on another control, etc.) the edit is
 //      committed instead of leaving a zombie TextField whose buffer would leak into the
@@ -90,7 +90,7 @@ namespace Localo.Editor
         private static readonly Color WarningSectionBackground = new Color(1f, 0.78f, 0.18f, 0.18f);
         private static readonly Color ActiveSearchBackground = new Color(1f, 0.88f, 0.18f, 0.28f);
 
-        private static readonly string[] ToolbarLabels = { "Setup", "Table", "Translation", "Glossary" };
+        private static readonly string[] ToolbarLabels = { "Setup", "Glossary", "Table", "Translation" };
         private const float GuideButtonWidth = 24f;
         private static readonly GUIContent GuideButtonContent =
             new GUIContent("?", "Localoの使い方とショートカットを別ウィンドウで表示します。");
@@ -115,7 +115,7 @@ namespace Localo.Editor
         private static readonly PropertyInfo GuiUtilityCompositionStringProperty =
             typeof(GUIUtility).GetProperty("compositionString", BindingFlags.Static | BindingFlags.NonPublic);
 
-        private enum Tab { Setup, Table, Translation, Glossary }
+        private enum Tab { Setup, Glossary, Table, Translation }
         private enum EditorMode { Normal, Insert }
         private enum PendingOpType { None, InsertRowBelow, DeleteRow }
 
@@ -133,7 +133,7 @@ namespace Localo.Editor
 
         // Keys that appear more than once across every table registered in _settings (matching
         // LocaloDatabase.EnsureInitialized's duplicate detection). Rebuilt only during Layout
-        // passes alongside _filteredIndices — see DrawTableTab.
+        // passes alongside _filteredIndices — see DrawGridTab.
         private readonly HashSet<string> _duplicateKeys = new HashSet<string>();
         private readonly HashSet<string> _seenKeys = new HashSet<string>();
         private bool _duplicateKeysDirty = true;
@@ -212,7 +212,7 @@ namespace Localo.Editor
         {
             titleContent = new GUIContent(WindowTitle);
             _filteredIndices = new List<int>();
-            Undo.undoRedoPerformed += MarkDuplicateKeysDirty;
+            Undo.undoRedoPerformed += HandleUndoRedo;
             EditorApplication.projectChanged += MarkDuplicateKeysDirty;
             LoadSettingsAndRestoreSelectedTable();
             InitLanguageOrderList();
@@ -220,8 +220,14 @@ namespace Localo.Editor
 
         private void OnDisable()
         {
-            Undo.undoRedoPerformed -= MarkDuplicateKeysDirty;
+            Undo.undoRedoPerformed -= HandleUndoRedo;
             EditorApplication.projectChanged -= MarkDuplicateKeysDirty;
+        }
+
+        private void HandleUndoRedo()
+        {
+            InitLanguageOrderList();
+            MarkDuplicateKeysDirty();
         }
 
         private void MarkDuplicateKeysDirty()
@@ -265,13 +271,11 @@ namespace Localo.Editor
                     DrawSetupTab();
                     break;
                 case Tab.Table:
-                    DrawTableTab();
+                case Tab.Glossary:
+                    DrawGridTab();
                     break;
                 case Tab.Translation:
                     DrawTranslationTab();
-                    break;
-                case Tab.Glossary:
-                    DrawGlossaryTab();
                     break;
             }
         }
@@ -296,6 +300,8 @@ namespace Localo.Editor
             {
                 if (_mode == EditorMode.Insert)
                     CommitInsertAndReturnToNormal();
+                if (IsGlossaryGrid != (newTab == Tab.Glossary))
+                    SwitchGridView(newTab == Tab.Glossary);
                 _currentTab = newTab;
                 // Don't carry Insert mode across a tab switch, or a TextField on the other tab could keep focus.
                 _mode = EditorMode.Normal;
@@ -306,6 +312,7 @@ namespace Localo.Editor
                 _focusPendingControlName = null;
                 _focusPendingForceReinitialize = false;
                 _moveInsertCaretToEndPending = false;
+                _imeCompositionSeenOnPrevKeyDown = false;
                 GUI.FocusControl(null);
                 GUIUtility.ExitGUI();
             }
@@ -317,8 +324,8 @@ namespace Localo.Editor
 
         private void HandleGlobalKeyEvents()
         {
-            // Vim keybindings are only active on the main edit screen (Table tab).
-            if (_currentTab != Tab.Table) return;
+            // TableとGlossaryは同じセル操作を使う。
+            if (_currentTab != Tab.Table && !IsGlossaryGrid) return;
 
             Event evt = Event.current;
 
@@ -419,6 +426,8 @@ namespace Localo.Editor
                 }
                 if (IsDetailsColumnSelected())
                     OpenSelectedRowDetails();
+                else if (IsGlossaryRemoveColumnSelected())
+                    QueueDeleteSelectedRow();
                 evt.Use();
                 return;
             }
@@ -575,11 +584,16 @@ namespace Localo.Editor
         private void EnterInsertMode()
         {
             int realRow = GetSelectedRealRowIndex();
-            if (realRow < 0 || _table == null) return; // Nothing to do if there's no row (use 'o' to create one first)
+            if (!HasGridRow(realRow)) return; // 空の表はoで行を追加する。
 
             if (IsDetailsColumnSelected())
             {
                 OpenSelectedRowDetails();
+                return;
+            }
+            if (IsGlossaryRemoveColumnSelected())
+            {
+                QueueDeleteSelectedRow();
                 return;
             }
 
@@ -594,7 +608,7 @@ namespace Localo.Editor
         private void OpenSelectedRowDetails()
         {
             int realRow = GetSelectedRealRowIndex();
-            if (_table == null || realRow < 0 || realRow >= _table.rows.Count) return;
+            if (IsGlossaryGrid || _table == null || realRow < 0 || realRow >= _table.rows.Count) return;
             LocaloRowDetailsWindow.Open(_table, _table.rows[realRow].key);
         }
 
@@ -637,12 +651,11 @@ namespace Localo.Editor
             int realRow = GetSelectedRealRowIndex();
             string editingControlName = realRow >= 0 ? CellControlName(realRow, _selectedCol) : null;
 
-            if (realRow >= 0 && _table != null && realRow < _table.rows.Count)
+            if (HasGridRow(realRow))
             {
-                Undo.RecordObject(_table, "Edit Localization Cell");
+                Undo.RecordObject(GridAsset, IsGlossaryGrid ? "Edit Glossary Cell" : "Edit Localization Cell");
                 WriteCellValue(realRow, _selectedCol, _insertBuffer);
-                EditorUtility.SetDirty(_table);
-                AssetDatabase.SaveAssets();
+                SaveGridAsset();
                 // The edit may change whether this row matches the active search filter; keep the
                 // cursor on the edited row when it survives the next recompute (otherwise clamp).
                 _pendingSelectRealRow = realRow;
@@ -664,7 +677,7 @@ namespace Localo.Editor
 
         private void FocusSearchField()
         {
-            // Reasserted every pass by DrawTableTab until the focus actually sticks
+            // Reasserted every pass by DrawGridTab until the focus actually sticks
             // (a single request can land on a pass where the control isn't drawn yet).
             _focusPendingControlName = SearchControlName;
             EditorGUI.FocusTextInControl(SearchControlName);
@@ -714,7 +727,7 @@ namespace Localo.Editor
 
         private void QueueInsertRowBelow()
         {
-            if (_table == null) return;
+            if (GridAsset == null) return;
             _pendingOpType = PendingOpType.InsertRowBelow;
             _pendingOpTargetRealRow = GetSelectedRealRowIndex(); // -1 when there are no rows yet (inserts at the head)
             Repaint(); // the op is applied on the next Layout pass; make sure one comes promptly
@@ -722,7 +735,7 @@ namespace Localo.Editor
 
         private void QueueDeleteSelectedRow()
         {
-            if (_table == null || _filteredIndices.Count == 0) return;
+            if (GridAsset == null || _filteredIndices.Count == 0) return;
             _pendingOpType = PendingOpType.DeleteRow;
             _pendingOpTargetRealRow = GetSelectedRealRowIndex();
             Repaint(); // the op is applied on the next Layout pass; make sure one comes promptly
@@ -767,14 +780,14 @@ namespace Localo.Editor
             _collapseSelectionOnResolve = false;
             _pendingDPress = false;
             _scrollPosition = Vector2.zero;
-            _filteredIndices.Clear(); // rebuilt later in this same Layout pass by DrawTableTab
+            _filteredIndices.Clear(); // rebuilt later in this same Layout pass by DrawGridTab
             GUI.FocusControl(null);
             Repaint();
         }
 
         private void ApplyPendingStructuralOp()
         {
-            if (_pendingOpType == PendingOpType.None || _table == null)
+            if (_pendingOpType == PendingOpType.None || GridAsset == null)
             {
                 _pendingOpType = PendingOpType.None;
                 return;
@@ -810,18 +823,15 @@ namespace Localo.Editor
 
         private void ApplyInsertRowBelow()
         {
-            LocalizationRow newRow = CreateEmptyRow();
+            int insertAt = _pendingOpTargetRealRow < 0 ? GridRowCount : _pendingOpTargetRealRow + 1;
+            insertAt = Mathf.Clamp(insertAt, 0, GridRowCount);
 
-            int insertAt = _pendingOpTargetRealRow < 0 ? _table.rows.Count : _pendingOpTargetRealRow + 1;
-            insertAt = Mathf.Clamp(insertAt, 0, _table.rows.Count);
-
-            Undo.RecordObject(_table, "Insert Localization Row");
-            _table.rows.Insert(insertAt, newRow);
-            EditorUtility.SetDirty(_table);
-            AssetDatabase.SaveAssets();
+            Undo.RecordObject(GridAsset, IsGlossaryGrid ? "Insert Glossary Term" : "Insert Localization Row");
+            InsertEmptyGridRow(insertAt);
+            SaveGridAsset();
 
             // Clear the search filter so the new empty row doesn't get hidden by an active filter.
-            // The filtered list itself is rebuilt later in this same Layout pass (DrawTableTab),
+            // The filtered list itself is rebuilt later in this same Layout pass (DrawGridTab),
             // which also resolves _pendingSelectRealRow to the new row.
             _searchText = string.Empty;
             _pendingSelectRealRow = insertAt;
@@ -833,13 +843,16 @@ namespace Localo.Editor
 
         private void ApplyDeleteRow()
         {
-            if (_pendingOpTargetRealRow >= 0 && _pendingOpTargetRealRow < _table.rows.Count)
+            if (_pendingOpTargetRealRow >= 0 && _pendingOpTargetRealRow < GridRowCount)
             {
-                Undo.RecordObject(_table, "Delete Localization Row");
-                _table.rows.RemoveAt(_pendingOpTargetRealRow);
-                _duplicateKeysDirty = true;
-                EditorUtility.SetDirty(_table);
-                AssetDatabase.SaveAssets();
+                Undo.RecordObject(GridAsset, IsGlossaryGrid ? "Delete Glossary Term" : "Delete Localization Row");
+                if (IsGlossaryGrid) _settings.glossary.RemoveAt(_pendingOpTargetRealRow);
+                else
+                {
+                    _table.rows.RemoveAt(_pendingOpTargetRealRow);
+                    _duplicateKeysDirty = true;
+                }
+                SaveGridAsset();
             }
 
             // Selection is clamped against the rebuilt filtered list later in this Layout pass.
@@ -849,6 +862,12 @@ namespace Localo.Editor
         // =====================================================================
         // Shared helpers
         // =====================================================================
+
+        private void SaveGridAsset()
+        {
+            EditorUtility.SetDirty(GridAsset);
+            AssetDatabase.SaveAssetIfDirty(GridAsset);
+        }
 
         private static string CellControlName(int realRow, int col) => $"LocCell_{realRow}_{col}";
 
@@ -915,10 +934,10 @@ namespace Localo.Editor
 
         private int GetDetailsColumnIndex() => GetEditableColumnCount();
 
-        private bool IsDetailsColumnSelected() => _selectedCol == GetDetailsColumnIndex();
+        private bool IsDetailsColumnSelected() => !IsGlossaryGrid && _selectedCol == GetDetailsColumnIndex();
 
         // hjkl・矢印キーで移動できる列数。詳細列まで含む。
-        private int GetNavigableColumnCount() => GetDetailsColumnIndex() + 1;
+        private int GetNavigableColumnCount() => GetEditableColumnCount() + 1;
 
         private int GetVisibleLanguageCount()
         {
@@ -1038,6 +1057,7 @@ namespace Localo.Editor
 
         private string ReadCellValue(int realRow, int col)
         {
+            if (IsGlossaryGrid) return ReadGlossaryCell(realRow, col);
             var row = _table.rows[realRow];
             int langCount = GetVisibleLanguageCount();
             if (col == 0) return row.key;
@@ -1048,8 +1068,13 @@ namespace Localo.Editor
 
         private void WriteCellValue(int realRow, int col, string value)
         {
-            var row = _table.rows[realRow];
             value = ConvertEditorLineBreaksToStoredText(value);
+            if (IsGlossaryGrid)
+            {
+                WriteGlossaryCell(realRow, col, value);
+                return;
+            }
+            var row = _table.rows[realRow];
             int langCount = GetVisibleLanguageCount();
             if (col == 0)
             {

@@ -15,21 +15,34 @@ namespace Localo.Runtime
 
     /// <summary>
     /// Global settings for the localization system. Intended to have exactly one asset in the project.
-    /// Holds the list of enabled languages (English always fixed at the head), visible editor columns,
+    /// Holds the list of enabled languages (translation source first), visible editor columns,
     /// and the registered tables.
     /// </summary>
     [CreateAssetMenu(fileName = "LocalizationSettings", menuName = "Localo/Localo Settings")]
     public class LocalizationSettings : ScriptableObject
     {
         [Header("-- Languages --")]
-        [Tooltip("使用する言語です。Englishは先頭に固定され、一覧の順番がTableの列順になります。")]
+        [Tooltip("使用する言語です。翻訳元の言語は先頭に固定され、一覧の順番がTableとGlossaryの列順になります。Englishは実行時のフォールバック用に常に有効です。")]
         public List<SystemLanguage> enabledLanguages = new List<SystemLanguage> { LocalizationLanguages.BaseLanguage };
 
-        [Tooltip("Tableで列として表示する言語です。非表示にしても翻訳データは保持されます。")]
+        [Tooltip("TableとGlossaryで列として表示する言語です。翻訳元は常に表示されます。他の言語は非表示でもデータが保持されます。")]
         public List<SystemLanguage> visibleLanguages = new List<SystemLanguage> { LocalizationLanguages.BaseLanguage };
 
         [HideInInspector]
         public bool visibleLanguagesInitialized;
+
+        [Header("-- Source Language --")]
+        [Tooltip("翻訳元の言語。TableとGlossaryの先頭に固定し、Source Termもこの言語で記入します。ゲーム起動時の表示言語とは別の設定です。")]
+        public SystemLanguage translationSourceLanguage = LocalizationLanguages.BaseLanguage;
+
+        /// <summary>有効な言語から翻訳元を選び、先頭列と表示状態を揃える。翻訳文は変更しない。</summary>
+        public void SetTranslationSourceLanguage(SystemLanguage language)
+        {
+            if (enabledLanguages == null || !enabledLanguages.Contains(language))
+                throw new ArgumentException("翻訳元には有効な言語を指定してください。", nameof(language));
+            translationSourceLanguage = language;
+            NormalizeLanguages();
+        }
 
         [Header("-- Startup Language --")]
         [Tooltip("起動時に端末の言語を使うか、下の固定言語を使うかを選びます。")]
@@ -57,11 +70,12 @@ namespace Localo.Runtime
         public int commentColumnWidth = 180;
 
         /// <summary>
-        /// Lightweight backstop that guarantees English is present at index 0 with no duplicates.
-        /// Only corrects "is English first" / "no duplicates" here and never touches the ordering itself,
-        /// so it doesn't fight the editor window's language reorder UI (ReorderableList drag).
+        /// 翻訳元を先頭・表示対象に固定し、Englishと重複のない有効言語を保持する。
+        /// 翻訳先同士の並びは変えず、エディタの並べ替え操作と競合させない。
         /// </summary>
-        private void OnValidate()
+        private void OnValidate() => NormalizeLanguages();
+
+        private void NormalizeLanguages()
         {
             if (enabledLanguages == null)
                 enabledLanguages = new List<SystemLanguage>();
@@ -75,16 +89,14 @@ namespace Localo.Runtime
                     enabledLanguages.RemoveAt(i);
             }
 
-            // Insert English at the head if missing; move it to the head if present elsewhere.
-            int englishIndex = enabledLanguages.IndexOf(LocalizationLanguages.BaseLanguage);
-            if (englishIndex < 0)
+            if (!enabledLanguages.Contains(LocalizationLanguages.BaseLanguage))
+                enabledLanguages.Add(LocalizationLanguages.BaseLanguage);
+
+            int sourceIndex = enabledLanguages.IndexOf(translationSourceLanguage);
+            if (sourceIndex != 0)
             {
-                enabledLanguages.Insert(0, LocalizationLanguages.BaseLanguage);
-            }
-            else if (englishIndex != 0)
-            {
-                enabledLanguages.RemoveAt(englishIndex);
-                enabledLanguages.Insert(0, LocalizationLanguages.BaseLanguage);
+                if (sourceIndex >= 0) enabledLanguages.RemoveAt(sourceIndex);
+                enabledLanguages.Insert(0, translationSourceLanguage);
             }
 
             if (!visibleLanguagesInitialized)
@@ -102,6 +114,8 @@ namespace Localo.Runtime
                     visibleLanguages.RemoveAt(i);
                 }
             }
+            if (!visibleLanguages.Contains(translationSourceLanguage))
+                visibleLanguages.Insert(0, translationSourceLanguage);
         }
     }
 
@@ -111,7 +125,7 @@ namespace Localo.Runtime
     [Serializable]
     public class LocaloGlossaryEntry
     {
-        [Tooltip("正式表記を揃えたい固有名詞や共通用語の、原文の表記です。")]
+        [Tooltip("翻訳元の言語で書く用語・行の識別名です。実際の正式表記は各言語の列に記入します。")]
         public string source = string.Empty;
         [Tooltip("各言語で使う用語の正式表記です。")]
         public List<LanguageData> translations = new List<LanguageData>();

@@ -19,7 +19,7 @@ Treat `Packages/com.takashihamada.localo/` as the installed tool and `Assets/Loc
 ## Data contract
 
 - Keep `LocalizationSettings.asset` at `Assets/LocaloAssets/Resources/LocalizationSettings.asset` unless the runtime loading contract changes too.
-- Keep English first in `enabledLanguages`; column order follows that list and visibility follows `visibleLanguages`.
+- Keep `translationSourceLanguage` first in `enabledLanguages` and visible in both grids. Keep English enabled as the runtime fallback. Column order follows `enabledLanguages`; target visibility follows `visibleLanguages`.
 - Register every runtime table in `registeredTables`, and keep keys unique across all registered tables.
 - Resolution is requested language, then English. Missing keys return the key; an explicitly blank base translation stays blank.
 - Store intentional line breaks as `<br>`.
@@ -32,13 +32,14 @@ Treat `Packages/com.takashihamada.localo/` as the installed tool and `Assets/Loc
 
 - シート：「Translation」タブの `LocalizationTable.textType`（文章の種類）と `translationInstructions`（話者・性格・口調などシートの声を含む自由記述の翻訳方針）。シートは文章の種類と声の単位であり、1つのシートに複数の話者を混ぜない。話者や基本の口調が変わる文章を見つけたら、シートを分けるよう人間に提案する。AIはシートの設定を変更しない。
 - 行：`LocalizationRow.aiScene`（場面：どこで、何がきっかけで、誰に向けて表示されるか）と `aiDisplaySpace`（器：表示する部品・幅・行数・フォントサイズ・自動縮小・表示時間）。どちらもAIがキーをもとに調査して書き、人間は確認だけ行う。
-- 共通用語集は `LocalizationSettings.glossary` に保存される。用語の正式表記は用語集を優先する。
+- 共通用語集は `LocalizationSettings.glossary` に保存される。GlossaryタブはTableと同じ表形式で、Source Term・各言語の正式表記・Notesを編集する。Source TermはSetupのSource Languageで選んだ言語で書く用語・行の識別名であり、実際の正式表記は各言語の列に保存する。右端の×で行を削除できる。
+- 翻訳前にコンテキストJSONの `glossary` 全体を必ず読み、Notesにある意味・使い方を確認し、対象言語の正式表記を優先する。行単位の翻訳でも同じ手順とする。翻訳後は該当する登録用語が守られているか確認する。人間の指示・確定訳と矛盾したら勝手に決めず報告する。
 - 翻訳前に `Localo.Editor.LocaloTranslationContext.ExportToString()`、または `ExportRowToString(table, key)` を呼ぶ。文章の種類・方針・用語集・翻訳文・人間のコメント・場面・器が区別されたJSONを読み、翻訳に反映する。場面や器が空・不明なら、下の手順で調査する。
 - 場面と器は `LocaloTranslationContext.SetRowContext(table, key, scene, displaySpace)` で保存する。`null` を渡した項目は変更しない。このAPIはコメント欄・翻訳文・シートの設定を変更しない。旧APIの `SetResearch` は使わない。人間はTableの行ごとのCommentの右にある詳細アイコンから場面と器を確認・修正できる。
 
 ### 言語別ガイドとシートの口調
 
-- コンテキストJSONはschema version 4。`languageGuidelines.commonPoints`と翻訳先に対応する`languageGuidelines.languages`を翻訳前に読む。`locale`・`region`・`points`・`notes`と出典を参照する。TranslationタブのLanguage Guidelinesも同じ資料を表示する。
+- コンテキストJSONはschema version 5。ルートの`sourceLanguage`の言語を原文とし、他の言語へ翻訳する。原文が空欄なら他言語から推測せず報告する。翻訳元の文章を翻訳先として上書きしない。`languageGuidelines.commonPoints`と翻訳先に対応する`languageGuidelines.languages`を翻訳前に読む。`locale`・`region`・`points`・`notes`と出典を参照する。TranslationタブのLanguage Guidelinesも同じ資料を表示する。
 - 既定はen-US・ko-KR・zh-CN・zh-TW・de-DE・fr-FR・es-419・pt-BR。人間の地域・口調の指定、用語集、翻訳者の確定訳を優先し、一般的なガイドで上書きしない。
 - 翻訳前にシート全体の原文と既存訳を読み、対象言語ごとの口調方針を決める。人間のシート方針、用語集、同じシートの翻訳者の確定訳を優先し、未指定なら話者・相手・場面から敬語・呼称・語尾などを推定する。人間の翻訳方針の欄を推定結果で書き換えない。
 - 同じ話者と相手の関係では口調を揃える。例えば韓国語の합니다体・해요体・반말は関係と場面で使い分け、相手によって変わる敬語や、感情・関係の変化に伴う意図的な切替を一律に揃えない。別シートの訳から話者の口調を無条件に流用しない。

@@ -38,8 +38,8 @@ namespace Localo.Editor
                     EditorGUILayout.LabelField("-- Setup --", EditorStyles.boldLabel);
                     EditorGUILayout.LabelField(
                         "1. Quick Setupで設定アセットと最初のシートを作成します。\n" +
-                        "2. プロジェクトで使う言語を選びます。基準言語はEnglishです。\n" +
-                        "3. Tableに表示する言語列を選びます。非表示の列もデータは保持されます。\n" +
+                        "2. プロジェクトで使う言語を有効にし、Source Languageで翻訳元の言語を選びます。翻訳元はTableとGlossaryの先頭に固定されます。\n" +
+                        "3. TableとGlossaryに表示する言語列を選びます。非表示の列もデータは保持されます。\n" +
                         "4. 言語列の順番や列幅を調整します。\n" +
                         "5. SetupのRegistered Tablesにある「+ Add Table」でシートを追加できます。",
                         EditorStyles.wordWrappedLabel);
@@ -78,8 +78,12 @@ namespace Localo.Editor
                 {
                     EditorGUILayout.LabelField("-- Glossary --", EditorStyles.boldLabel);
                     EditorGUILayout.LabelField(
-                        "Glossaryタブで、全シート共通の用語集を編集できます。\n" +
-                        "固有名詞や共通用語について、原文の表記・各言語の正式表記・意味や表記上の注意点を登録します。登録した内容は全シートの翻訳で参照します。",
+                        "Glossaryタブで、全シート共通の用語集をTableと同じ操作で編集できます。\n" +
+                        "Keyの代わりにSource Term、Commentの代わりにNotes（意味・使い方）を表示し、その間に各言語の正式表記を並べます。\n" +
+                        "Source Termには、翻訳元の言語で用語や行の意味を記入します。実際の正式表記は各言語の列に記入します。\n" +
+                        "列の表示・順番・幅はSetupの設定を共有します。+ Add Termまたはoで用語を追加し、iまたはダブルクリックで編集できます。\n" +
+                        "右端の×をクリックすると用語を行ごと削除します。×を選択してEnterまたはiでも削除でき、Undoで元に戻せます。\n" +
+                        "AI向けJSONには、翻訳前に用語集全体を読み、翻訳後に登録用語の使用を確認する手順を含めます。",
                         EditorStyles.wordWrappedLabel);
                 }
 

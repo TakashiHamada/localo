@@ -4,11 +4,7 @@
 // Handles assigning/editing LocalizationSettings, the enabled-language checkboxes,
 // and the enabled-language column order (ReorderableList).
 //
-// English is always fixed at the head of enabledLanguages (can't be removed or
-// reordered), so the ReorderableList only targets a "reorder buffer excluding
-// English" (_languageOrderBuffer). On drag-commit, enabledLanguages is rebuilt as
-// [English] + buffer. LocalizationSettings.OnValidate is only a backstop for this
-// constraint and never interferes with the buffer while it's being dragged.
+// 翻訳元は先頭に固定し、残りの言語だけを並べ替える。Englishは実行時のフォールバックとして有効に保つ。
 // =============================================================================
 
 using System.Collections.Generic;
@@ -100,13 +96,12 @@ namespace Localo.Editor
                 EditorGUILayout.Space(8f);
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                 {
-                    EditorGUILayout.LabelField("-- Base Language --", EditorStyles.boldLabel);
-                    using (new EditorGUI.DisabledScope(true))
-                    {
-                        EditorGUILayout.TextField("Language 0",
-                            LocalizationLanguages.GetDisplayName(LocalizationLanguages.BaseLanguage));
-                    }
-                    EditorGUILayout.HelpBox("Englishは先頭に固定されています。削除や並べ替えはできません。", MessageType.None);
+                    EditorGUILayout.LabelField("-- Source Language --", EditorStyles.boldLabel);
+                    DrawSourceLanguageSelector();
+                    EditorGUILayout.HelpBox(
+                        "選んだ言語を翻訳元にして、TableとGlossaryの先頭に固定します。Source Termもこの言語で記入します。\n" +
+                        "翻訳元を変更するときは、既存の原文とSource Termがその言語で書かれているか確認してください。",
+                        MessageType.None);
                 }
 
                 EditorGUILayout.Space(8f);
@@ -128,7 +123,7 @@ namespace Localo.Editor
                     if (hasHiddenLanguageColumns)
                     {
                         EditorGUILayout.HelpBox(
-                            "Tableで非表示になっている言語列があります。非表示でもデータは保持されます。",
+                            "TableとGlossaryで非表示になっている言語列があります。非表示でもデータは保持されます。",
                             MessageType.Warning);
                     }
                 }
@@ -140,7 +135,7 @@ namespace Localo.Editor
                     if (_languageOrderList == null) InitLanguageOrderList();
                     _languageOrderList.DoLayoutList();
                     EditorGUILayout.HelpBox(
-                        "ドラッグして並べ替えると、Tableの列順に反映されます。先頭に固定されたEnglishはここには表示されません。",
+                        "ドラッグして並べ替えると、TableとGlossaryの列順に反映されます。翻訳元は先頭に固定されるため、この一覧には表示されません。",
                         MessageType.None);
                 }
 
@@ -150,7 +145,7 @@ namespace Localo.Editor
                     EditorGUILayout.LabelField("-- Column Widths --", EditorStyles.boldLabel);
                     DrawColumnWidthFields();
                     EditorGUILayout.HelpBox(
-                        "Tableに表示する各列の幅をピクセル単位で設定します。",
+                        "TableとGlossaryの列幅をピクセル単位で設定します。KeyはSource Term、CommentはNotesの幅にも反映されます。",
                         MessageType.None);
                 }
 
@@ -402,15 +397,30 @@ namespace Localo.Editor
             }
         }
 
+        private void DrawSourceLanguageSelector()
+        {
+            SystemLanguage[] languages = _settings.enabledLanguages.Distinct().ToArray();
+            string[] labels = languages.Select(LocalizationLanguages.GetDisplayName).ToArray();
+            int currentIndex = System.Array.IndexOf(languages, _settings.translationSourceLanguage);
+            int nextIndex = EditorGUILayout.Popup(new GUIContent("Source Language", "この言語の原文から他の言語へ翻訳します。"),
+                currentIndex, labels);
+            if (nextIndex < 0 || nextIndex == currentIndex) return;
+            Undo.RecordObject(_settings, "Change Translation Source Language");
+            _settings.SetTranslationSourceLanguage(languages[nextIndex]);
+            EditorUtility.SetDirty(_settings);
+            AssetDatabase.SaveAssetIfDirty(_settings);
+            InitLanguageOrderList();
+        }
+
         private void InitLanguageOrderList()
         {
             _languageOrderBuffer = _settings != null && _settings.enabledLanguages != null
-                ? _settings.enabledLanguages.Skip(1).ToList() // Reorder target excluding English (head)
+                ? _settings.enabledLanguages.Where(language => language != _settings.translationSourceLanguage).ToList()
                 : new List<SystemLanguage>();
 
             _languageOrderList = new ReorderableList(_languageOrderBuffer, typeof(SystemLanguage), true, true, false, false)
             {
-                drawHeaderCallback = rect => EditorGUI.LabelField(rect, "Enabled language order (excluding English)"),
+                drawHeaderCallback = rect => EditorGUI.LabelField(rect, "Target language order"),
                 drawElementCallback = (rect, index, isActive, isFocused) =>
                 {
                     rect.y += 2f;
@@ -426,7 +436,7 @@ namespace Localo.Editor
             if (_settings == null) return;
 
             Undo.RecordObject(_settings, "Reorder Localization Languages");
-            var newList = new List<SystemLanguage> { LocalizationLanguages.BaseLanguage };
+            var newList = new List<SystemLanguage> { _settings.translationSourceLanguage };
             newList.AddRange(_languageOrderBuffer);
             _settings.enabledLanguages = newList;
             EditorUtility.SetDirty(_settings);
@@ -466,6 +476,7 @@ namespace Localo.Editor
 
         private void ToggleLanguage(SystemLanguage lang, bool enable)
         {
+            if (!enable && (lang == _settings.translationSourceLanguage || lang == LocalizationLanguages.BaseLanguage)) return;
             Undo.RecordObject(_settings, enable ? "Enable Localization Language" : "Disable Localization Language");
             EnsureVisibleLanguagesInitialized();
             if (enable)
@@ -512,7 +523,7 @@ namespace Localo.Editor
             _settings.visibleLanguages.Clear();
             for (int i = 0; i < enabled.Count; i++)
             {
-                if ((newMask & (1 << i)) != 0)
+                if ((newMask & (1 << i)) != 0 || enabled[i] == _settings.translationSourceLanguage)
                     _settings.visibleLanguages.Add(enabled[i]);
             }
             _settings.visibleLanguagesInitialized = true;
@@ -554,6 +565,12 @@ namespace Localo.Editor
                     _settings.visibleLanguages.RemoveAt(i);
                     changed = true;
                 }
+            }
+
+            if (!_settings.visibleLanguages.Contains(_settings.translationSourceLanguage))
+            {
+                _settings.visibleLanguages.Insert(0, _settings.translationSourceLanguage);
+                changed = true;
             }
 
             if (!changed) return;

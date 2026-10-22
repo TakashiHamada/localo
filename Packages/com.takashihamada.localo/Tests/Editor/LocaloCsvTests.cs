@@ -231,6 +231,69 @@ namespace Localo.Tests
         }
 
         [Test]
+        public void Import_PlaceholderWarningsUseConfiguredSourceAndExportKeepsSourceFirst()
+        {
+            _settings.SetTranslationSourceLanguage(SystemLanguage.Japanese);
+            _main.SetText(FindRow(_main, "SCORE"), SystemLanguage.Japanese, "スコア {1}");
+
+            LocaloCsvReport matching = LocaloCsv.ImportFromString("Key,ChineseTraditional\nSCORE,分數 {1}\n",
+                new LocaloCsvImportOptions { DryRun = true }, _settings);
+            Assert.That(matching.Success, Is.True);
+            Assert.That(matching.Warnings, Has.None.Contains("placeholders"));
+
+            LocaloCsvReport mismatch = LocaloCsv.ImportFromString("Key,ChineseTraditional\nSCORE,分數 {2}\n",
+                new LocaloCsvImportOptions { DryRun = true }, _settings);
+            Assert.That(mismatch.Warnings, Has.Some.Contains("current Japanese {1}"));
+            Assert.That(LocaloCsv.ExportToString(_settings), Does.Contain("Table,Key,Japanese,English,"));
+        }
+
+        [TestCase(false, false, "{0}")]
+        [TestCase(true, false, "{0}")]
+        [TestCase(false, true, "{0}")]
+        [TestCase(false, false, "{1}")]
+        public void Import_PlaceholderWarningsUseRetainedSourceAfterBaselineResolution(
+            bool sourceConflict, bool sourceLocked, string translatedPlaceholder)
+        {
+            _settings.SetTranslationSourceLanguage(SystemLanguage.Japanese);
+            string baseline = LocaloCsv.ExportToString(_settings);
+            _main.SetText(FindRow(_main, "SCORE"), SystemLanguage.Japanese, "原文 {1}");
+            if (sourceLocked) _main.translatorLanguages.Add(SystemLanguage.Japanese);
+            string incomingSource = sourceConflict ? "変更された原文 {2}" : "スコア  {0}";
+            string csv = $"Key,English,Japanese\nSCORE,Updated {translatedPlaceholder},{incomingSource}\n";
+
+            LocaloCsvReport report = LocaloCsv.ImportFromString(csv, new LocaloCsvImportOptions
+            {
+                DryRun = true, BaselineCsvText = baseline
+            }, _settings);
+
+            Assert.That(report.Success, Is.True, report.ToString());
+            Assert.That(report.Changes, Has.Count.EqualTo(1));
+            Assert.That(report.Conflicts.Count, Is.EqualTo(sourceConflict ? 1 : 0));
+            if (translatedPlaceholder == "{0}")
+                Assert.That(report.Warnings, Has.Some.Contains("current Japanese {1}"));
+            else
+                Assert.That(report.Warnings, Has.None.Contains("placeholders"));
+            Assert.That(GetText(_main, "SCORE", SystemLanguage.Japanese), Is.EqualTo("原文 {1}"));
+        }
+
+        [Test]
+        public void Import_NewRowDoesNotUseSourceColumnExcludedByLanguageFilter()
+        {
+            _settings.SetTranslationSourceLanguage(SystemLanguage.Japanese);
+            LocaloCsvReport report = LocaloCsv.ImportFromString(
+                "Table,Key,English,Japanese\nMainTable,NEW,Translation {0},原文 {0}\n",
+                new LocaloCsvImportOptions
+                {
+                    DryRun = true, AddMissingKeys = true, Languages = new[] { SystemLanguage.English }
+                }, _settings);
+
+            Assert.That(report.Success, Is.True, report.ToString());
+            Assert.That(report.Changes, Has.Count.EqualTo(1));
+            Assert.That(report.Warnings, Has.Some.Contains("English: placeholders {0}"));
+            Assert.That(report.Warnings, Has.Some.Contains("current Japanese"));
+        }
+
+        [Test]
         public void Import_WithBaseline_AppliesReviewerChangesAndReportsConflicts()
         {
             string baseline = LocaloCsv.ExportToString(_settings);

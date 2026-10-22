@@ -90,7 +90,7 @@ namespace Localo.Tests
                 var exported = JsonUtility.FromJson<ProjectExport>(
                     LocaloTranslationContext.ExportRowToString(_table, "HELLO", _settings));
 
-                Assert.That(exported.schemaVersion, Is.EqualTo(4));
+                Assert.That(exported.schemaVersion, Is.EqualTo(5));
                 Assert.That(exported.tables, Has.Count.EqualTo(1));
                 Assert.That(exported.tables[0].translatorLanguages, Is.EqualTo(new[] { "French" }));
                 Assert.That(exported.translatorExamples, Has.Count.EqualTo(1));
@@ -123,7 +123,7 @@ namespace Localo.Tests
                 : LocaloTranslationContext.ExportToString(_settings);
             var exported = JsonUtility.FromJson<ProjectExport>(json);
 
-            Assert.That(exported.schemaVersion, Is.EqualTo(4));
+            Assert.That(exported.schemaVersion, Is.EqualTo(5));
             Assert.That(exported.languageGuidelines.commonPoints, Is.EqualTo(preview.commonPoints));
             Assert.That(exported.languageGuidelines.reviewedOn, Is.EqualTo(preview.reviewedOn));
             Assert.That(exported.languageGuidelines.languages.ConvertAll(guide => guide.language),
@@ -159,9 +159,9 @@ namespace Localo.Tests
             Func<LocalizationTable, string, LocalizationSettings, string> exportRow =
                 LocaloTranslationContext.ExportRowToString;
 
-            Assert.That(JsonUtility.FromJson<ProjectExport>(export(_settings)).schemaVersion, Is.EqualTo(4));
+            Assert.That(JsonUtility.FromJson<ProjectExport>(export(_settings)).schemaVersion, Is.EqualTo(5));
             Assert.That(JsonUtility.FromJson<ProjectExport>(exportRow(_table, "HELLO", _settings)).schemaVersion,
-                Is.EqualTo(4));
+                Is.EqualTo(5));
         }
 
         [Test]
@@ -197,6 +197,28 @@ namespace Localo.Tests
                 foreach (SourceExport source in guide.sources)
                     Assert.That(source.url, Does.StartWith("https://"), guide.language);
             }
+        }
+
+        [TestCase(SystemLanguage.Japanese, false)]
+        [TestCase(SystemLanguage.English, true)]
+        [TestCase(SystemLanguage.Korean, true)]
+        public void Export_IdentifiesSelectedSourceWithoutRemovingOtherLanguages(SystemLanguage source, bool singleRow)
+        {
+            _settings.enabledLanguages.Add(SystemLanguage.Japanese);
+            _settings.enabledLanguages.Add(SystemLanguage.Korean);
+            _settings.SetTranslationSourceLanguage(source);
+            _table.SetText(_row, SystemLanguage.English, "Hi!");
+            _table.SetText(_row, SystemLanguage.Korean, "안녕!");
+
+            string json = singleRow
+                ? LocaloTranslationContext.ExportRowToString(_table, "HELLO", _settings)
+                : LocaloTranslationContext.ExportToString(_settings);
+            var exported = JsonUtility.FromJson<ProjectExport>(json);
+
+            Assert.That(exported.sourceLanguage, Is.EqualTo(source.ToString()));
+            Assert.That(exported.tables[0].rows[0].translations, Has.Count.EqualTo(3));
+            Assert.That(exported.tables[0].rows[0].translations.Find(t => t.language == "Japanese").text, Is.EqualTo("やあ！"));
+            Assert.That(exported.glossary[0].source, Is.EqualTo("ウイリス"));
         }
 
         [Test]
@@ -289,6 +311,7 @@ namespace Localo.Tests
         [Serializable] private sealed class ProjectExport
         {
             public int schemaVersion;
+            public string sourceLanguage;
             public GuidelinesExport languageGuidelines;
             public List<GlossaryExport> glossary;
             public List<TableExport> translatorExamples;

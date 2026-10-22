@@ -100,7 +100,7 @@ namespace Localo.Editor
 
         private static ProjectContext CreateContext(LocalizationSettings settings, IEnumerable<SystemLanguage> targetLanguages)
         {
-            var context = new ProjectContext();
+            var context = new ProjectContext { sourceLanguage = settings.translationSourceLanguage.ToString() };
             SystemLanguage[] enabled = (settings.enabledLanguages ?? new List<SystemLanguage>()).ToArray();
             context.languages.AddRange(enabled.Select(language => language.ToString()));
             SystemLanguage[] targets = targetLanguages?.Distinct().ToArray() ?? enabled;
@@ -162,12 +162,17 @@ namespace Localo.Editor
         }
 
         // JsonUtilityで書き出すDTO。フィールド名がそのままJSONのキーになる（クラス名は出力に影響しない）。
-        // schemaVersion 4: 共通ルールと対象言語のガイドをlanguageGuidelinesに追加した。
+        // schemaVersion 5: 翻訳元の言語をsourceLanguageとして明示する。
         [Serializable]
         private sealed class ProjectContext
         {
-            public int schemaVersion = 4;
-            public string instructions = "用語の正式表記はglossaryを参照。" +
+            public int schemaVersion = 5;
+            public string sourceLanguage;
+            public string instructions = "sourceLanguageで指定した言語のtranslationsを原文とし、他の言語へ翻訳する。原文の言語を列の位置やEnglish固定で推測しない。" +
+                "原文が空欄なら他言語から推測せず報告し、翻訳元の文章は翻訳先として上書きしない。" +
+                "glossaryのsourceは翻訳元の言語で書かれた用語・行の識別名であり、実際の正式表記は各言語のtranslationsにある。" +
+                "翻訳前にglossary全体を必ず読み、各用語の意味・使い方（notes）を確認し、対象言語の正式表記を優先する。" +
+                "翻訳後に、該当する登録用語が守られているか確認する。人間の指示や確定訳と矛盾する場合は勝手に決めず報告する。" +
                 "languageGuidelinesのcommonPointsと翻訳先に対応するlanguagesを参照し、locale・region・敬語・文法・表記に注意する。" +
                 "言語別ガイドは一般的な候補であり、人間の指示・作品の翻訳方針・用語集・翻訳者の確定訳を優先する。" +
                 "翻訳前にシート全体の原文と既存訳を読み、言語ごとの口調方針を決める。未指定の敬語や呼称は話者・相手・場面から推定し、" +

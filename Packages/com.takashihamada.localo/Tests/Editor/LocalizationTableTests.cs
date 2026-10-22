@@ -48,6 +48,37 @@ namespace Localo.Tests
         }
 
         [Test]
+        public void SourceLanguage_IsFirstAndVisibleWhilePreservingTargetOrder()
+        {
+            var settings = ScriptableObject.CreateInstance<LocalizationSettings>();
+            try
+            {
+                settings.enabledLanguages = new List<SystemLanguage>
+                {
+                    SystemLanguage.English, SystemLanguage.French, SystemLanguage.Japanese, SystemLanguage.Korean
+                };
+                settings.visibleLanguages = new List<SystemLanguage> { SystemLanguage.English };
+                settings.visibleLanguagesInitialized = true;
+
+                settings.SetTranslationSourceLanguage(SystemLanguage.Japanese);
+                Assert.That(settings.enabledLanguages, Is.EqualTo(new[]
+                {
+                    SystemLanguage.Japanese, SystemLanguage.English, SystemLanguage.French, SystemLanguage.Korean
+                }));
+                Assert.That(settings.visibleLanguages, Does.Contain(SystemLanguage.Japanese));
+
+                settings.SetTranslationSourceLanguage(SystemLanguage.English);
+                Assert.That(settings.enabledLanguages, Is.EqualTo(new[]
+                {
+                    SystemLanguage.English, SystemLanguage.Japanese, SystemLanguage.French, SystemLanguage.Korean
+                }));
+                Assert.Throws<System.ArgumentException>(() => settings.SetTranslationSourceLanguage(SystemLanguage.German));
+                Assert.That(settings.translationSourceLanguage, Is.EqualTo(SystemLanguage.English));
+            }
+            finally { Object.DestroyImmediate(settings); }
+        }
+
+        [Test]
         public void GetText_WithMissingRowOrLanguage_ReturnsEmpty()
         {
             _row.translations = new List<LanguageData>();

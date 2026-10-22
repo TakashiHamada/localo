@@ -5,13 +5,13 @@ namespace Localo.Runtime
 {
     /// <summary>
     /// Static data class defining the languages targeted by Localo and their display names.
-    /// English is always handled separately (fixed at the head of LocalizationSettings.enabledLanguages),
+    /// English is always enabled separately as the runtime fallback,
     /// so it is not included in <see cref="SelectableLanguages"/>. Data + display helpers only, no logic.
     /// </summary>
     public static class LocalizationLanguages
     {
         /// <summary>
-        /// The base language that is always active. Fixed at the head of enabledLanguages.
+        /// 実行時のフォールバック言語。翻訳元の言語・エディタの先頭列とは独立して常に有効。
         /// </summary>
         public const SystemLanguage BaseLanguage = SystemLanguage.English;
 

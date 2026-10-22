@@ -11,11 +11,29 @@
 
 ---
 
+## レビューでの追加決定：翻訳元の選択と先頭列
+
+- SetupのSource Languageで翻訳元を選ぶ。`LocalizationSettings.translationSourceLanguage`に保存し、初期値はEnglish。日本語原文ならJapaneseを選ぶ。
+- 選んだ言語をTableとGlossaryの先頭に固定し、必ず有効・表示対象にする。ほかの言語は並べ替え・非表示が可能。既存の文章は書き換えない。
+- Source Termは選んだ言語で書く用語・行の識別名とする。実際の正式表記は各言語の列に書く。翻訳元を変更するときは、人間が既存のSource Termと原文を確認する。
+- JSONの現行schema versionは5。全体・行単位ともルートの`sourceLanguage`を含め、外部AIはその言語の文章から他言語へ翻訳する。原文は上書きせず、空欄は報告する。CSVのプレースホルダー比較も選択された原文言語を使う。
+- 実行時のフォールバックはEnglishのまま。起動時の表示言語とも独立する。
+- 以下に残る日本語固定・English先頭固定・schema version 4の説明より、この決定を優先する。言語別ガイド自体の追加時点はversion 4だった。
+
+## レビューでの追加決定：Glossaryの表形式編集
+
+- Glossaryタブを残し、Tableと同じグリッドで編集する。列はSource Term・各言語の正式表記・Notes。検索・キーボード編集・範囲選択・TSVコピー＆ペースト・Undoに対応する。
+- 列の表示・順番・幅はTableと共有する。Keyの幅をSource Termに、Commentの幅をNotesに使う。用語は+ Add Termまたはoで追加できる。右端には×ボタンを置き、クリックで用語を行ごと削除する。削除はLayoutまで保留し、Undoで復元できる。
+- 保存先は既存の`LocalizationSettings.glossary`を維持し、データの移行やシートのGlossary属性は追加しない。
+- タブ順は`Setup → Glossary → Table → Translation`。
+- AIは行単位の翻訳でも、翻訳前に用語集全体とNotesの意味・使い方を読み、登録された正式表記を優先する。翻訳後に登録用語が守られているか確認する。人間の指示・確定訳と矛盾する場合は勝手に決めず報告する。
+- この確認は外部AIへの指示としてJSONと配布用Skillに含める。自動検査エンジンや用語集の自動ロックは追加しない。
+
 ## レビューでの追加決定：言語別ガイドとシートの口調
 
 - TranslationタブのLanguage Guidelinesで8言語の対象地域と翻訳の注意点を閲覧する。言語選択はプレビュー専用で設定データを変更しない。共通ルールと出典・地域選定の補足は折りたたむ。
 - 共通データはパッケージの`Editor/Resources/LocaloLanguageGuidelines.json`。画面とコンテキストJSONは同じ内容を参照する。詳細な調査説明は[翻訳ガイド](translation-language-guidelines.md)を参照する。
-- コンテキストJSONの現行schema versionは4。ルートの`languageGuidelines`に調査日・共通ルール・共通出典・対象言語ごとの言語名／locale／地域／注意点／補足／出典を追加する。有効な言語のガイドだけを設定順で含め、日本語は原文用として今回の言語別ガイドの対象外とする。全体・行単位の両方に含める。
+- 言語別ガイドはschema version 4で追加した（現行はversion 5）。ルートの`languageGuidelines`に調査日・共通ルール・共通出典・対象言語ごとの言語名／locale／地域／注意点／補足／出典を追加する。有効な言語のガイドだけを設定順で含め、日本語は原文用として今回の言語別ガイドの対象外とする。全体・行単位の両方に含める。
 - 両export APIの`targetLanguages`はガイドを絞る省略可能な引数。有効でない対象は拒否し、省略すると有効な全言語を含める。この引数は翻訳文・用語集・お手本を削除しない。Copy All Context as JSONも有効な全言語を含める。
 - AIは翻訳前にシート全体の原文と既存訳を読み、言語ごと・相手との関係ごとの口調方針を決める。人間の指示・用語集・同じシートの翻訳者の確定訳を優先し、未指定なら推定する。対象シート全体が未確認なら全体のコンテキストを取得し、確認後は行単位のJSONも使える。
 - 推定した口調と未解決の矛盾は作業報告に記載する。相手や場面で意図的に切り替わる敬語を一律に揃えない。人間の翻訳方針や確定訳は推定で書き換えない。自動翻訳ジョブや口調の推定エンジンをLocalo内で実行する変更ではなく、外部AIに渡すガイド・指示の拡張である。
@@ -40,7 +58,7 @@
 - 行の詳細ウィンドウ（Localo Details）には、Scene と Display Space の2つの入力欄だけを置く。シートの方針・人間のコメント・行単位のJSONコピーボタンは表示しない。どの行かは、ウィンドウのタブ名にキーを出して示す。JSONは Translation タブの Copy All Context as JSON か、`ExportRowToString` で取得する。
 - 変数（プレースホルダー）や用語は、文章と用語集からツールやAIが拾えるため、行の項目にしない。
 - 保存APIは `LocaloTranslationContext.SetRowContext(table, key, scene, displaySpace)`。`null` を渡した項目は変更しない。`SetResearch` は場面を保存する互換APIとして `[Obsolete]` で残す。
-- コンテキストJSONはschema version 4（第5版で追加した文脈構造はversion 3から継続）。各シートに `textType`、各行に `aiScene` と `aiDisplaySpace` を出す（`aiResearch` はなくなる）。CSVの列構成は変えない。
+- コンテキストJSONはschema version 5（文脈構造はversion 3から継続）。各シートに `textType`、各行に `aiScene` と `aiDisplaySpace` を出す（`aiResearch` はなくなる）。CSVの列構成は変えない。
 
 ---
 
@@ -61,7 +79,7 @@
 - Translationタブで対象シートを選び、Translator Lockで翻訳者担当の言語にチェックする。`LocalizationTable.translatorLanguages` のリストに保存し、指定された言語の列全体をAIの変更から保護する。空欄や今後追加する行も対象。シートの全言語を保護したければ全言語にチェックする。
 - Tableは対象セルに `■` を付ける。人間はTableで文章を修正でき、設定のチェックを外して保護を解除できる。AIは設定解除やアセット直接編集による回避をしない。
 - CSV取り込みは既定で、保護対象の変更をerrorにして取り込み全体を中止する。変更されていない訳はerrorにしない。翻訳者の納品CSVや確定訳の修正を人間が意図して取り込む場合に限り、`AllowTranslatorCellChanges = true`／`-localoAllowTranslatorChanges` を使える。設定は維持する。AIはこの指定を使わない。
-- コンテキストJSONの各シートに `translatorLanguages` を含める。`translatorExamples` には全シートから翻訳者担当の入力済みの訳がある行を、シートの方針・各言語の文章・人間のコメント・AI調査結果とともに収録する。行単位の書き出しでも全シートのお手本を渡す。（この時点のスキーマはversion 2。現行はversion 4。）
+- コンテキストJSONの各シートに `translatorLanguages` を含める。`translatorExamples` には全シートから翻訳者担当の入力済みの訳がある行を、シートの方針・各言語の文章・人間のコメント・AI調査結果とともに収録する。行単位の書き出しでも全シートのお手本を渡す。（この時点のスキーマはversion 2。現行はversion 5。）
 - AIは同じ言語・近い文脈の翻訳者の訳を、用語・言い回し・口調のお手本として優先的に参照する。他の言語の訳は参考例として区別し、話者やシートの違いに注意する。用語集や人間の指示と矛盾したら報告し、確定訳を勝手に修正しない。
 - 初期実装は保護設定・表示・CSVの保護・コンテキストとお手本の書き出しまで。自動翻訳や差分検出は未実装。
 
@@ -73,7 +91,7 @@
 
 画面の初期実装として、Tableの右に「Translation」タブを追加した。シートの性格付けは `translationInstructions` の自由文とし、文章の種類・話者・性格・口調を個別の必須項目にはしない。話者や基本の口調が変わる場合はシートを分け、一時的な違いは人間のコメントで補足できる。全シート共通の用語集は `LocalizationSettings.glossary` で管理する。この方針を、本文のText Type・話者列・キャラクター設定の専用画面に関する旧案より優先する。
 
-その後、用語集はTranslationタブから独立した「Glossary」タブへ移した。Guideはタブをやめ、ツールバー右端の「?」ボタンで開く別ウィンドウ（Localo Guide）にした。タブは `Setup → Table → Translation → Glossary` の順に並ぶ。
+その後、用語集はTranslationタブから独立した「Glossary」タブへ移した。Guideはタブをやめ、ツールバー右端の「?」ボタンで開く別ウィンドウ（Localo Guide）にした。タブは `Setup → Glossary → Table → Translation` の順に並ぶ。
 
 各行の調査結果の欄と、Commentの右にある詳細アイコンも実装した（当初は `aiResearch` 1欄。現行は冒頭の決定どおり `aiScene` と `aiDisplaySpace` の2欄で、保存APIは `SetRowContext`）。アイコン列には見出しを表示しない。`LocaloTranslationContext` のEditor APIと画面のJSONコピーボタンで、方針・用語集・コメント・場面・器をまとめて読み出せる。自動調査や翻訳ジョブの取り込み・差分検出・Validatorの拡張は、この画面の初期実装には含まない。
 
@@ -106,7 +124,7 @@ UIのボタン・タブ・項目名・見出しは英語、ツールチップ・
 
 | 項目 | 決定 |
 |---|---|
-| 原文言語 | 日本語。Englishはランタイムの基準言語・フォールバック先として残すが、翻訳では「訳す先の1言語」として扱う |
+| 原文言語 | SetupのSource Languageで選ぶ。Englishはランタイムのフォールバック先として残す |
 | LLMの実行者 | コーディングエージェント（Claude Code等）。手順はSkillで渡す。Unity側は決まった動作をするツールだけを持ち、LLM APIの呼び出しもAPIキーも持たない |
 | 文脈の粒度 | Text Typeや既定の話者はシート（テーブル）単位で持つ。行ごとに変わる話者は「話者」列に、それ以外の補足は既存の `comment` に書く。話者の性格や口調は `characters.md` にまとめる |
 | 文字数制限 | 厳密な上限は最初は設けない。意味と文脈を保ち、原文とおおむね同じ表示幅・行数を目指す。収まりが不明・両立困難なら要確認とし、機械QAは長さの比率が極端な場合に警告するだけ |
@@ -162,7 +180,7 @@ public SystemLanguage translationSourceLanguage = LocalizationLanguages.BaseLang
 
 - 初期値はEnglishにする。既存プロジェクトでは、今のプレースホルダー比較（Englishと比較）がそのまま続く。
 - 日本語原文のプロジェクトは、SetupタブでJapaneseに切り替える。
-- 原文言語は `enabledLanguages` に含まれていなければならない。含まれていなければ、Validatorがerrorにする。
+- 原文言語は `enabledLanguages` の先頭と表示対象に固定し、無効化・非表示にしない。
 - 原文が日本語でEnglishがまだ訳されていない場合、ランタイムのフォールバックは空になる。そのため翻訳ジョブでは、Englishを最優先の翻訳先にする（§6.1）。
 
 ### 3.3 シート単位の文脈

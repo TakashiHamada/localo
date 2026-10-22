@@ -323,7 +323,8 @@ namespace Localo.Editor
                 }
 
                 baseline.TryGetValue(key, out BaselineRow baselineRow);
-                string referenceEnglish = ResolveReferenceEnglish(table, row, isNewRow, record, layout, languageColumns);
+                SystemLanguage sourceLanguage = settings.translationSourceLanguage;
+                int firstTextUpdate = plan.TextUpdates.Count;
 
                 foreach ((int index, SystemLanguage language) in languageColumns)
                 {
@@ -347,12 +348,25 @@ namespace Localo.Editor
                         continue;
                     }
 
-                    string english = language == LocalizationLanguages.BaseLanguage
-                        ? (isNewRow ? incoming : current)
-                        : referenceEnglish;
-                    AddTextWarnings(table, key, columnName, current, incoming, english, report);
                     report.Changes.Add(new LocaloCsvCellChange(table.name, key, columnName, current, incoming));
                     plan.TextUpdates.Add((table, row, language, incoming));
+                }
+
+                // baseline・競合・ロック・言語絞り込みの判定後に、実際に保持される原文を確定する。
+                // CSVに原文があっても採用されなければ、現在の原文（新規行は空欄）で翻訳先を検査する。
+                string currentSource = isNewRow ? string.Empty : table.GetText(row, sourceLanguage);
+                string referenceSource = currentSource;
+                for (int i = firstTextUpdate; i < plan.TextUpdates.Count; i++)
+                    if (plan.TextUpdates[i].Language == sourceLanguage) referenceSource = plan.TextUpdates[i].Text;
+
+                for (int i = firstTextUpdate; i < plan.TextUpdates.Count; i++)
+                {
+                    var update = plan.TextUpdates[i];
+                    string current = isNewRow ? string.Empty : table.GetText(row, update.Language);
+                    // 原文そのものの変更は、従来どおり現在の原文との変数差分も通知する。
+                    string source = !isNewRow && update.Language == sourceLanguage ? currentSource : referenceSource;
+                    AddTextWarnings(table, key, LocalizationLanguages.GetDisplayName(update.Language),
+                        current, update.Text, source, sourceLanguage, report);
                 }
 
                 if (importComments)
@@ -586,23 +600,8 @@ namespace Localo.Editor
             return true;
         }
 
-        private static string ResolveReferenceEnglish(LocalizationTable table, LocalizationRow row, bool isNewRow,
-            List<string> record, CsvLayout layout, List<(int Index, SystemLanguage Language)> languageColumns)
-        {
-            foreach ((int index, SystemLanguage language) in languageColumns)
-            {
-                if (language == LocalizationLanguages.BaseLanguage) return record[index];
-            }
-            if (!isNewRow) return table.GetText(row, LocalizationLanguages.BaseLanguage);
-            foreach ((int index, SystemLanguage language) in layout.LanguageColumns)
-            {
-                if (language == LocalizationLanguages.BaseLanguage) return record[index];
-            }
-            return string.Empty;
-        }
-
         private static void AddTextWarnings(LocalizationTable table, string key, string columnName, string current,
-            string incoming, string english, LocaloCsvReport report)
+            string incoming, string source, SystemLanguage sourceLanguage, LocaloCsvReport report)
         {
             string label = $"[{table.name}] {key} | {columnName}";
             if (incoming.Length == 0 && current.Length > 0)
@@ -612,11 +611,11 @@ namespace Localo.Editor
 
             if (incoming.Length == 0) return;
             string incomingPlaceholders = PlaceholderSignature(incoming);
-            string englishPlaceholders = PlaceholderSignature(english);
-            if (incomingPlaceholders != englishPlaceholders)
+            string sourcePlaceholders = PlaceholderSignature(source);
+            if (incomingPlaceholders != sourcePlaceholders)
             {
                 report.Warnings.Add($"{label}: placeholders {Describe(incomingPlaceholders)} differ from the " +
-                                    $"current English {Describe(englishPlaceholders)}. Check the calling code.");
+                                    $"current {LocalizationLanguages.GetDisplayName(sourceLanguage)} {Describe(sourcePlaceholders)}. Check the calling code.");
             }
         }
 
