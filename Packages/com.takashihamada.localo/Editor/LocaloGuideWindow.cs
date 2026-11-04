@@ -90,6 +90,29 @@ namespace Localo.Editor
                 EditorGUILayout.Space(8f);
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                 {
+                    EditorGUILayout.LabelField("-- QA --", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField(
+                        "QAタブで、文字に関する機械的なチェックを実行できます。Run Allで登録されたすべてのチェックを一括で、各チェックのRunでそのチェックだけを実行します。\n" +
+                        "指摘の場所のボタンを押すと、Tableのそのセル、シーン・プレハブ、またはスクリプトのその行へ移ります。\n" +
+                        "重大度: Errorは実行時に壊れるもの、Warningは画面に出る可能性が高いもの、Infoは意図的な場合もあるものです。\n" +
+                        "Missing Translations: 原文があるのに訳が空欄の行を探します。\n" +
+                        "Missing Keys: シーン・プレハブ・スクリプトで使っているキーが、どのテーブルにも無い箇所を探します。\n" +
+                        "Placeholder Mismatch: 原文と訳で {0} などの組が違う行を探します。\n" +
+                        "Tag Mismatch: 原文と訳で <color> などのタグが違う行や、閉じ忘れたタグを探します。\n" +
+                        "Invalid Characters: タブ・ゼロ幅文字・文字化けの記号など、見えない文字や表示できない文字を探します。\n" +
+                        "Missing Glyphs: TMPの既定のフォントと代替フォントに無い（□になる）文字を探します。\n" +
+                        "Whitespace: 先頭・末尾の空白の有無が原文と違う行や、連続した半角スペースを探します。\n" +
+                        "Punctuation: 中国語・日本語の文中の半角の , . や、韓国語・欧米の言語に混じった全角の句読点を探します。\n" +
+                        "Manual Line Breaks: 手で入れた改行（<br>・\\n）の直後が「、」「。」などで始まる訳文を探します。手で入れた改行には禁則処理が効きません。\n" +
+                        "Legacy Text Usage: legacy Text（UnityEngine.UI.Text）と TextMesh の使用箇所を探します。legacy Text には禁則処理が無いため、TextMesh Pro か UI Toolkit を使ってください。\n" +
+                        "Line Break Settings: TMP Settings と PanelSettings（UI Toolkit）に、行頭禁則・行末禁則のリストが割り当てられているかを調べます。\n" +
+                        "チェックは画面を使いません。表示の見た目は人間が確認してください。",
+                        EditorStyles.wordWrappedLabel);
+                }
+
+                EditorGUILayout.Space(8f);
+                using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+                {
                     EditorGUILayout.LabelField("-- Keyboard Shortcuts --", EditorStyles.boldLabel);
                     DrawShortcutRow("h / j / k / l", "左・下・上・右へ移動します。矢印キーでも操作できます。");
                     DrawShortcutRow("Shift + movement", "移動先まで選択範囲を広げます。");

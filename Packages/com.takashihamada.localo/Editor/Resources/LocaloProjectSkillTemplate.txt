@@ -87,6 +87,8 @@ Reviewers must save as UTF-8 (Google Sheets, or Excel "CSV UTF-8"); Excel can al
 ## Runtime integration
 
 - Bind Canvas TMP text with `LocalizeTextMeshProUGUI` and 3D TMP text with `LocalizeTextMeshPro`.
+- 新しく作る文字表示に legacy Text（`UnityEngine.UI.Text`）と `TextMesh` を使わない。legacy Text には行頭禁則の機能が無く、日本語・中国語を折り返すと「、」「。」が行頭に来る。UGUI は `TextMeshProUGUI`、3D は `TextMeshPro`、UI Toolkit は `Label` を使う。UI Toolkit では、`PanelSettings.textSettings` に Line Breaking Rules を割り当てた Panel Text Settings を渡す（未割り当てだと禁則が効かない）。
+- 手で入れた改行（`<br>`）は禁則の対象外。改行の直後が「、」「。」などで始まらないように訳す。
 - Do not place `LocaloManager` manually; it bootstraps before the first scene.
 - Switch language with `LocaloManager.Instance.SetLanguage(...)` and fetch dynamic text with `GetLocalizedString(...)`.
 - Keep platform-specific language adapters in the consuming project. The public package boundary is `LocaloManager.SetSystemLanguageProvider(...)`.
@@ -96,6 +98,7 @@ Reviewers must save as UTF-8 (Google Sheets, or Excel "CSV UTF-8"); Excel can al
 
 1. Compile with the Unity workflow documented by the project and confirm zero errors.
 2. Verify registered tables, enabled language columns, and unique keys after data edits.
+   After changing translations or text UI, run `Localo.Editor.LocaloQa.RunAll()` (the same checks as the QA tab) and fix or report each Warning and Error. Do not rewrite translator-locked columns to fix an issue; report it instead.
 3. In Play Mode, switch languages at least twice and confirm bound and dynamic text updates.
 4. Confirm Console errors are zero, then stop Play Mode.
 5. Hand visual quality and interactive feel checks to a human with specific items to inspect.

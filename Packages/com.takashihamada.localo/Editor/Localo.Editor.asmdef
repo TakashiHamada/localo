@@ -2,7 +2,8 @@
   "name": "Localo.Editor",
   "rootNamespace": "Localo.Editor",
   "references": [
-    "Localo.Runtime"
+    "Localo.Runtime",
+    "Unity.TextMeshPro"
   ],
   "includePlatforms": [
     "Editor"

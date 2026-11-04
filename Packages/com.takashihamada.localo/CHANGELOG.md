@@ -6,6 +6,8 @@ All notable changes to Localo are documented in this file.
 
 ### Added
 
+- QA tab for mechanical text checks, also available from code as `Localo.Editor.LocaloQa.RunAll()` / `Run(checkId)`. New checks implement `ILocaloQaCheck` and are registered in `LocaloQa.Checks`. The first checks are Manual Line Breaks (Japanese/Chinese line-start and line-end rules around `<br>` and `\n`), Legacy Text Usage (`UnityEngine.UI.Text` and `TextMesh` in scenes, prefabs and scripts), and Line Break Settings (line-breaking lists in TMP Settings and UI Toolkit Panel Text Settings). Clicking an issue jumps to the Table cell or the asset.
+- QA checks for typical localization bugs: Missing Translations, Missing Keys (scene/prefab `localizationKey` and literal keys in scripts), Placeholder Mismatch, Tag Mismatch, Invalid Characters, Missing Glyphs (TMP default font and fallbacks), Whitespace and Punctuation. **Run All** runs every check. The CSV placeholder warning and the QA check share `LocaloTextPatterns`.
 - CSV export / import API for translator review workflows (`Localo.Editor.LocaloCsv`), with dry run, per-column filters, baseline-based conflict detection, and batch-mode entry points (`LocaloCsvCommandLine`).
 - Translation tab: per sheet, a Text Type, free-form Translation Guidelines (speaker, personality, tone), and a Translator Lock. Locked language columns show `■` in the Table tab; CSV import rejects any change to them unless a human sets `AllowTranslatorCellChanges` (`-localoAllowTranslatorChanges` in batch mode).
 - Glossary tab for project-wide terms, their official spelling per language, and notes.

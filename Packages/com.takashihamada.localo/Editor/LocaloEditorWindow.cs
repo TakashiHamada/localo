@@ -2,10 +2,11 @@
 // LocaloEditorWindow.cs — main entry point for Localo
 // =============================================================================
 // Launched from Window/Localo.
-// Setup、Glossary、Table、Translationの各タブを切り替える。ツールバー右端の「?」ボタンでGuideウィンドウを開く。
+// Setup、Glossary、Table、Translation、QAの各タブを切り替える。ツールバー右端の「?」ボタンでGuideウィンドウを開く。
 // This file owns window state and OnGUI dispatch, plus the Vim-like keybinding
 // event handling core. Per-tab drawing lives in
-// LocaloEditorWindow.SetupTab.cs / .TableTab.cs / .TranslationTab.cs / .GlossaryTab.cs.
+// LocaloEditorWindow.SetupTab.cs / .TableTab.cs / .TranslationTab.cs / .GlossaryTab.cs / .QaTab.cs.
+// The QA checks themselves live in LocaloQa.cs and LocaloQa*Check.cs.
 // The Guide and the per-row Details are separate windows (LocaloGuideWindow / LocaloRowDetailsWindow).
 //
 // Vim event handling contract (see individual methods for details):
@@ -90,7 +91,7 @@ namespace Localo.Editor
         private static readonly Color WarningSectionBackground = new Color(1f, 0.78f, 0.18f, 0.18f);
         private static readonly Color ActiveSearchBackground = new Color(1f, 0.88f, 0.18f, 0.28f);
 
-        private static readonly string[] ToolbarLabels = { "Setup", "Glossary", "Table", "Translation" };
+        private static readonly string[] ToolbarLabels = { "Setup", "Glossary", "Table", "Translation", "QA" };
         private const float GuideButtonWidth = 24f;
         private static readonly GUIContent GuideButtonContent =
             new GUIContent("?", "Localoの使い方とショートカットを別ウィンドウで表示します。");
@@ -115,7 +116,8 @@ namespace Localo.Editor
         private static readonly PropertyInfo GuiUtilityCompositionStringProperty =
             typeof(GUIUtility).GetProperty("compositionString", BindingFlags.Static | BindingFlags.NonPublic);
 
-        private enum Tab { Setup, Glossary, Table, Translation }
+        // ToolbarLabels と同じ並び（GUILayout.Toolbar の添字をそのまま Tab として使う）。
+        private enum Tab { Setup, Glossary, Table, Translation, QA }
         private enum EditorMode { Normal, Insert }
         private enum PendingOpType { None, InsertRowBelow, DeleteRow }
 
@@ -277,6 +279,9 @@ namespace Localo.Editor
                 case Tab.Translation:
                     DrawTranslationTab();
                     break;
+                case Tab.QA:
+                    DrawQaTab();
+                    break;
             }
         }
 
@@ -298,24 +303,31 @@ namespace Localo.Editor
             }
             if (newTab != _currentTab)
             {
-                if (_mode == EditorMode.Insert)
-                    CommitInsertAndReturnToNormal();
-                if (IsGlossaryGrid != (newTab == Tab.Glossary))
-                    SwitchGridView(newTab == Tab.Glossary);
-                _currentTab = newTab;
-                // Don't carry Insert mode across a tab switch, or a TextField on the other tab could keep focus.
-                _mode = EditorMode.Normal;
-                _pendingDPress = false;
-                _ignoreNextReturnCharacterEvent = false;
-                _escapeKeyHeld = false;
-                _lastEscapeKeyDownTime = double.NegativeInfinity;
-                _focusPendingControlName = null;
-                _focusPendingForceReinitialize = false;
-                _moveInsertCaretToEndPending = false;
-                _imeCompositionSeenOnPrevKeyDown = false;
-                GUI.FocusControl(null);
+                ChangeTab(newTab);
                 GUIUtility.ExitGUI();
             }
+        }
+
+        // タブを切り替える。呼び出し側は、描画中なら直後に GUIUtility.ExitGUI() で今回の描画を打ち切る。
+        private void ChangeTab(Tab newTab)
+        {
+            if (newTab == _currentTab) return;
+            if (_mode == EditorMode.Insert)
+                CommitInsertAndReturnToNormal();
+            if (IsGlossaryGrid != (newTab == Tab.Glossary))
+                SwitchGridView(newTab == Tab.Glossary);
+            _currentTab = newTab;
+            // Don't carry Insert mode across a tab switch, or a TextField on the other tab could keep focus.
+            _mode = EditorMode.Normal;
+            _pendingDPress = false;
+            _ignoreNextReturnCharacterEvent = false;
+            _escapeKeyHeld = false;
+            _lastEscapeKeyDownTime = double.NegativeInfinity;
+            _focusPendingControlName = null;
+            _focusPendingForceReinitialize = false;
+            _moveInsertCaretToEndPending = false;
+            _imeCompositionSeenOnPrevKeyDown = false;
+            GUI.FocusControl(null);
         }
 
         // =====================================================================
@@ -758,6 +770,8 @@ namespace Localo.Editor
                 _pendingOpTargetRealRow = -1;
             }
 
+            // QAの指摘から移るときは、テーブルの切り替え（選択を初期化する）の後に行と列を選ぶ。
+            ApplyPendingQaReveal();
             ApplyPendingStructuralOp();
             ApplyPendingPaste();
         }

@@ -141,9 +141,6 @@ namespace Localo.Editor
 
         private const string UndoName = "Import Localo CSV";
 
-        private static readonly Regex PlaceholderPattern =
-            new Regex(@"\{\d+(?:,[^}:]*)?(?::[^}]*)?\}", RegexOptions.Compiled);
-
         // ---------------------------------------------------------------- Export
 
         /// <summary>
@@ -619,12 +616,8 @@ namespace Localo.Editor
             }
         }
 
-        private static string PlaceholderSignature(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return string.Empty;
-            return string.Join(" ", PlaceholderPattern.Matches(text).Cast<Match>()
-                .Select(match => match.Value).Distinct().OrderBy(value => value, StringComparer.Ordinal));
-        }
+        // QAタブの Placeholder Mismatch と同じ判定を使う。
+        private static string PlaceholderSignature(string text) => LocaloTextPatterns.PlaceholderSignature(text);
 
         private static string Describe(string signature) => signature.Length == 0 ? "(none)" : signature;
 

@@ -69,12 +69,36 @@ Keep platform SDK code in the consuming project. Localo itself only depends on U
 
 ## Editor tabs
 
-The **Window > Localo** window has four tabs in this order: Setup → Glossary → Table → Translation. The `?` button at the right end of the toolbar opens the Localo Guide window with all shortcuts.
+The **Window > Localo** window has five tabs in this order: Setup → Glossary → Table → Translation → QA. The `?` button at the right end of the toolbar opens the Localo Guide window with all shortcuts.
 
 - **Setup**: create the settings, choose the Source Language, register tables (sheets), choose languages and column widths, install the AI project skill.
 - **Glossary**: edit project-wide terms in the same grid as Table, using **Source Term**, language columns, and **Notes**. Search, keyboard editing and TSV clipboard operations work the same as Table; each tab keeps its own search, selection and scroll position. Visible languages, column order and widths are shared. Use the selected source language for Source Term (the term or row identifier), and enter actual official text in each language column. The rightmost × deletes the term; Undo restores it. Existing glossary data is retained. AI instructions require reading the whole glossary before translation and checking terminology afterward.
 - **Table**: edit keys, translations and the human `Comment` in a keyboard-first grid. The icon right of `Comment` (the details icon) opens the row's AI-researched Scene and Display Space.
 - **Translation**: per sheet, choose the Text Type, write the Translation Guidelines (speaker, personality, tone), and set the **Translator Lock**. Locked language columns are shown with `■` in the Table tab and are never changed by AI. **Language Guidelines** previews read-only guidance for eight target languages, including their target regions; common rules and sources are collapsible. **Copy All Context as JSON** includes the same guidance for enabled languages alongside the context for AI translation (`Localo.Editor.LocaloTranslationContext`, schema version 5).
+
+- **QA**: run mechanical text checks. **Run All** runs every registered check in one go; each check also has its own **Run** button. Click an issue's location to jump to the Table cell, ping the scene or prefab, or open the script at that line. Checks never render the screen; visual quality stays a human check.
+
+### QA checks
+
+The same checks are available from code: `Localo.Editor.LocaloQa.RunAll()` returns every issue (severity, check id, message, location), and `LocaloQa.Run(checkId)` runs one check. Add a check by implementing `ILocaloQaCheck` and registering it in `LocaloQa.Checks`; the QA tab shows it automatically.
+
+Checks that compare a translation with its source use the Source Language selected on the Setup tab, and skip rows whose source text is empty. Severity: **Error** breaks at runtime, **Warning** is likely visible on screen, **Info** may be intentional.
+
+| Check | Id | What it finds |
+|---|---|---|
+| Missing Translations | `missing-translation` | Rows with source text whose translation in an enabled language is empty or whitespace only. Warning. |
+| Missing Keys | `missing-key` | Keys used by Localo components in scenes and prefabs (`localizationKey`, including prefab overrides) and by `GetLocalizedString("KEY")`, `SetKey("KEY")` and `LocaloDatabase.GetText("KEY", …)` in scripts that no registered table contains. At runtime the key itself is displayed. Keys built from strings cannot be checked. Error. |
+| Placeholder Mismatch | `placeholder-mismatch` | Translations whose `{0}`-style placeholders differ from the source (order and duplicates are ignored; the same rule as CSV import warnings). Error. |
+| Tag Mismatch | `tag-mismatch` | Translations whose rich text tags (names and open/close counts) differ from the source, and unbalanced tags. Attribute values (`<color=red>` vs `<color=#f00>`) and standalone tags such as `<br>` and `<sprite>` are not compared. Warning. |
+| Invalid Characters | `invalid-character` | Control characters other than `\n` (tabs, `\r`), U+FFFD, zero-width characters and bidirectional controls in any language. NBSP and the ideographic space are allowed. Warning. |
+| Missing Glyphs | `missing-glyph` | Characters that the TMP default font asset, its fallbacks and the global TMP fallbacks cannot draw (shown as □). Dynamic font assets are checked against their source font file without being modified. Fonts set per text, UI Toolkit fonts and legacy Text fonts are not covered. Warning. |
+| Manual Line Breaks | `manual-line-break-kinsoku` | Translations where a manual line break (`<br>`, `\n`) is followed by a character that must not start a line (`、` `。` `，` closing brackets, small kana, `,` `.` …) or preceded by one that must not end a line (opening brackets). Rich text tags are skipped. Line-breaking rules of TMP and UI Toolkit do not apply to manual breaks. |
+| Whitespace | `whitespace` | Translations whose leading or trailing whitespace (presence only) differs from the source, which shifts centered or right-aligned text (Warning); leading or trailing whitespace in the source itself and double spaces not in the source (Info). |
+| Punctuation | `punctuation` | Punctuation that does not fit the language: half-width `,` `?` `!` `:` `;` and `.` next to Chinese characters, half-width `,` `.` next to Japanese text (Chinese-style `，` `．` in Japanese is Info), full-width `，` `。` `、` in Korean, and full-width punctuation in other languages. Tags and placeholders are skipped. Warning. |
+| Legacy Text Usage | `legacy-text-usage` | `UnityEngine.UI.Text` and `TextMesh` in scenes and prefabs under `Assets` (read as YAML text, without opening scenes), plus `AddComponent<Text>()`-style code. Legacy Text has no line-breaking rules, so `、` and `。` can start a wrapped line in Japanese and Chinese. Wrapping legacy Text is a warning. |
+| Line Break Settings | `line-break-settings` | Whether TMP Settings and every `PanelSettings` asset under `Assets` have line-breaking character lists. UI Toolkit applies no line-breaking rules unless `PanelSettings.textSettings` references a Panel Text Settings asset with Line Breaking Rules (the default list is empty in Unity 6.3). `PanelSettings` created at runtime cannot be checked. |
+
+Use TextMesh Pro (`TextMeshProUGUI` / `TextMeshPro`) or UI Toolkit instead of legacy Text. TMP Essential Resources assign line-breaking rules by default. In both TMP and UI Toolkit, **Following Characters** are characters that cannot start a line and **Leading Characters** are characters that cannot end a line.
 
 The shared guide data lives in `Editor/Resources/LocaloLanguageGuidelines.json` inside the package. The defaults are US English, Korean (South Korea), Simplified Chinese (mainland China), Traditional Chinese (Taiwan), German (Germany), French (France), Latin American Spanish (`es-419`), and Brazilian Portuguese (`pt-BR`). Project-specific instructions and translator-approved text take priority. Before translating, the AI should read the whole sheet, infer a tone for each language and speaker/listener relationship, keep that tone consistent, and report its inferred policy and unresolved conflicts.
 
