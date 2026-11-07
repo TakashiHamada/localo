@@ -9,26 +9,15 @@ namespace Localo.Editor
     /// <summary>プレビューとAI向けJSONで共有する、パッケージ同梱の翻訳ガイド。</summary>
     internal static class LocaloLanguageGuidelines
     {
-        private const string AssetPath =
-            "Packages/com.takashihamada.localo/Editor/Resources/LocaloLanguageGuidelines.json";
+        internal const string RelativePath = "Editor/Resources/LocaloLanguageGuidelines.json";
 
         private static string _loadedJson;
         private static LanguageGuidelinesContext _catalog;
 
-        internal static LanguageGuidelinesContext Load()
-        {
-            TextAsset asset = AssetDatabase.LoadAssetAtPath<TextAsset>(AssetPath);
-            if (asset == null) throw new InvalidOperationException("言語別ガイドが見つかりません: " + AssetPath);
-            string json = asset.text;
-            if (_catalog != null && _loadedJson == json) return _catalog;
-
-            var catalog = JsonUtility.FromJson<LanguageGuidelinesContext>(json);
-            if (catalog?.commonPoints == null || catalog.languages == null || catalog.languages.Length == 0)
-                throw new InvalidOperationException("言語別ガイドの形式を確認してください: " + AssetPath);
-            _catalog = catalog;
-            _loadedJson = json;
-            return _catalog;
-        }
+        internal static LanguageGuidelinesContext Load() =>
+            LocaloPackageFiles.LoadJson(RelativePath, "言語別ガイド",
+                catalog => catalog.commonPoints != null && catalog.languages != null && catalog.languages.Length > 0,
+                ref _loadedJson, ref _catalog);
 
         /// <summary>呼び出し側で設定順に絞った翻訳先を含める。日本語は今回の言語別ガイドの対象外。</summary>
         internal static LanguageGuidelinesContext ForLanguages(IEnumerable<SystemLanguage> languages)

@@ -229,6 +229,13 @@ namespace Localo.Editor
                         if (_mode == EditorMode.Insert) CommitInsertAndReturnToNormal();
                         QueueInsertRowBelow();
                     }
+                    if (GUILayout.Button(new GUIContent("Platform Terms",
+                                "SetupのTarget Platformsで選んだ機種の、ボタン名などの公式表記を別ウィンドウで表示します（閲覧専用）。"),
+                            GUILayout.ExpandWidth(false)))
+                    {
+                        if (_mode == EditorMode.Insert) CommitInsertAndReturnToNormal();
+                        LocaloPlatformTermsWindow.Open(_settings);
+                    }
                 }
                 else DrawSheetPopup(null, GUILayout.Width(SheetPopupWidth));
 

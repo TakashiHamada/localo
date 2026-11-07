@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Localo.Runtime;
 using UnityEditor;
 using UnityEngine;
@@ -20,6 +22,8 @@ namespace Localo.Editor
                 "言語ごとの対象地域と翻訳の注意点を確認できます（閲覧専用）。作品固有の指定はシートのTranslation Guidelinesに記入します。\n" +
                 "AI向けJSONには、シート全体から言語ごとの口調を推定し、同じ相手との関係で揃える手順を含めます。JSONを渡すAIがこの手順に沿って翻訳します。",
                 MessageType.None);
+
+            DrawProjectProfilePreview();
 
             LanguageGuidelinesContext catalog;
             try { catalog = LocaloLanguageGuidelines.Load(); }
@@ -59,6 +63,36 @@ namespace Localo.Editor
                 GUILayout.Label(
                     "一般的な言語・表記の参考資料です。各社の口調の指定を、作品全体やすべてのキャラクターに適用するものではありません。",
                     EditorStyles.wordWrappedMiniLabel);
+            }
+        }
+
+        // 作品全体の指針（SetupのProject Profile）を、言語別ガイドより先に示す。
+        private void DrawProjectProfilePreview()
+        {
+            ProjectProfileContext profile;
+            try { profile = LocaloProjectProfileOptions.CreateContext(_settings); }
+            catch (InvalidOperationException exception)
+            {
+                EditorGUILayout.HelpBox(exception.Message, MessageType.Error);
+                return;
+            }
+
+            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+            {
+                EditorGUILayout.LabelField("Project Profile", EditorStyles.miniBoldLabel);
+                if (profile == null)
+                {
+                    GUILayout.Label("未設定です。SetupのProject Profileで、対象年齢・ジャンル・トーンを選べます。",
+                        EditorStyles.wordWrappedLabel);
+                    return;
+                }
+                GUILayout.Label(LocaloProjectProfileOptions.Summarize(profile), EditorStyles.wordWrappedLabel);
+                var guidance = new List<string>();
+                if (profile.audience != null) guidance.Add(profile.audience.guidance);
+                guidance.AddRange(profile.genres.Select(genre => genre.guidance));
+                guidance.AddRange(profile.tones.Select(tone => tone.guidance));
+                if (profile.japaneseKanjiRange != null) guidance.Add(profile.japaneseKanjiRange.guidance);
+                DrawGuidelinePoints(guidance.ToArray());
             }
         }
 

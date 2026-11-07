@@ -41,7 +41,8 @@ namespace Localo.Editor
                         "2. プロジェクトで使う言語を有効にし、Source Languageで翻訳元の言語を選びます。翻訳元はTableとGlossaryの先頭に固定されます。\n" +
                         "3. TableとGlossaryに表示する言語列を選びます。非表示の列もデータは保持されます。\n" +
                         "4. 言語列の順番や列幅を調整します。\n" +
-                        "5. SetupのRegistered Tablesにある「+ Add Table」でシートを追加できます。",
+                        "5. SetupのRegistered Tablesにある「+ Add Table」でシートを追加できます。\n" +
+                        "6. Project Profileで作品全体の対象年齢・ジャンル・トーンと日本語の漢字の範囲を、Target Platformsで対象の機種を選びます。AIの翻訳・仮の文字の基準と、QAに使います。",
                         EditorStyles.wordWrappedLabel);
                 }
 
@@ -83,7 +84,8 @@ namespace Localo.Editor
                         "Source Termには、翻訳元の言語で用語や行の意味を記入します。実際の正式表記は各言語の列に記入します。\n" +
                         "列の表示・順番・幅はSetupの設定を共有します。+ Add Termまたはoで用語を追加し、iまたはダブルクリックで編集できます。\n" +
                         "右端の×をクリックすると用語を行ごと削除します。×を選択してEnterまたはiでも削除でき、Undoで元に戻せます。\n" +
-                        "AI向けJSONには、翻訳前に用語集全体を読み、翻訳後に登録用語の使用を確認する手順を含めます。",
+                        "AI向けJSONには、翻訳前に用語集全体を読み、翻訳後に登録用語の使用を確認する手順を含めます。\n" +
+                        "Platform Termsで、SetupのTarget Platformsで選んだ機種のボタン名などの公式表記を閲覧できます（同梱データ・閲覧専用）。用語集に同じ語を書くと、用語集が優先されます。",
                         EditorStyles.wordWrappedLabel);
                 }
 
@@ -104,6 +106,8 @@ namespace Localo.Editor
                         "Whitespace: 先頭・末尾の空白の有無が原文と違う行や、連続した半角スペースを探します。\n" +
                         "Punctuation: 中国語・日本語の文中の半角の , . や、韓国語・欧米の言語に混じった全角の句読点を探します。\n" +
                         "Manual Line Breaks: 手で入れた改行（<br>・\\n）の直後が「、」「。」などで始まる訳文を探します。手で入れた改行には禁則処理が効きません。\n" +
+                        "Platform Terms: 選んだ機種のボタン名・機能名について、同梱の一覧で公式ではないとした書き方を探します。\n" +
+                        "Kanji Range: 日本語の列で、Project Profileの漢字の範囲（例: 小2まで）を超える漢字を探します。\n" +
                         "Legacy Text Usage: legacy Text（UnityEngine.UI.Text）と TextMesh の使用箇所を探します。legacy Text には禁則処理が無いため、TextMesh Pro か UI Toolkit を使ってください。\n" +
                         "Line Break Settings: TMP Settings と PanelSettings（UI Toolkit）に、行頭禁則・行末禁則のリストが割り当てられているかを調べます。\n" +
                         "チェックは画面を使いません。表示の見た目は人間が確認してください。",

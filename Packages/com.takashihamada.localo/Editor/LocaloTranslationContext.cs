@@ -108,6 +108,8 @@ namespace Localo.Editor
                 throw new ArgumentException("ガイドの翻訳先には有効な言語を指定してください。", nameof(targetLanguages));
             // 呼び出し側の対象指定順に左右されず、Tableと同じ設定順でガイドを渡す。
             context.languageGuidelines = LocaloLanguageGuidelines.ForLanguages(enabled.Where(targets.Contains));
+            context.projectProfile = LocaloProjectProfileOptions.CreateContext(settings);
+            context.platformTerms = CreatePlatformTerms(settings, enabled);
             foreach (LocaloGlossaryEntry entry in settings.glossary ?? new List<LocaloGlossaryEntry>())
             {
                 if (entry == null) continue;
@@ -127,6 +129,35 @@ namespace Localo.Editor
                 if (examples.Count > 0) context.translatorExamples.Add(CreateTableContext(table, examples));
             }
             return context;
+        }
+
+        // 選んだ機種の用語を、有効な言語の表記だけに絞って渡す。
+        private static PlatformTermsCatalog CreatePlatformTerms(LocalizationSettings settings, SystemLanguage[] languages)
+        {
+            PlatformTerms[] platforms = LocaloPlatformTerms.ForPlatforms(settings.targetPlatforms);
+            if (platforms.Length == 0) return null;
+            var languageNames = new HashSet<string>(languages.Select(language => language.ToString()));
+            PlatformTermsCatalog catalog = LocaloPlatformTerms.Load();
+            return new PlatformTermsCatalog
+            {
+                reviewedOn = catalog.reviewedOn,
+                notice = catalog.notice,
+                platforms = platforms.Select(platform => new PlatformTerms
+                {
+                    id = platform.id,
+                    name = platform.name,
+                    notes = platform.notes,
+                    sources = platform.sources,
+                    terms = (platform.terms ?? Array.Empty<PlatformTerm>()).Select(term => new PlatformTerm
+                    {
+                        id = term.id,
+                        category = term.category,
+                        notes = term.notes,
+                        translations = (term.translations ?? Array.Empty<PlatformTermTranslation>())
+                            .Where(translation => languageNames.Contains(translation.language)).ToArray()
+                    }).Where(term => term.translations.Length > 0).ToArray()
+                }).ToArray()
+            };
         }
 
         private static TableContext CreateTableContext(LocalizationTable table, IEnumerable<LocalizationRow> rows)
@@ -163,10 +194,11 @@ namespace Localo.Editor
 
         // JsonUtilityで書き出すDTO。フィールド名がそのままJSONのキーになる（クラス名は出力に影響しない）。
         // schemaVersion 5: 翻訳元の言語をsourceLanguageとして明示する。
+        // schemaVersion 6: 作品プロファイル（projectProfile）と機種の公式表記（platformTerms）を加える。
         [Serializable]
         private sealed class ProjectContext
         {
-            public int schemaVersion = 5;
+            public int schemaVersion = 6;
             public string sourceLanguage;
             public string instructions = "sourceLanguageで指定した言語のtranslationsを原文とし、他の言語へ翻訳する。原文の言語を列の位置やEnglish固定で推測しない。" +
                 "原文が空欄なら他言語から推測せず報告し、翻訳元の文章は翻訳先として上書きしない。" +
@@ -192,9 +224,15 @@ namespace Localo.Editor
                 "特にボタンや短いUI文言は、原文とおおむね同じ表示幅・行数を目指し、不要な説明を足さず簡潔に訳す。" +
                 "文字数は目安とし、言語やフォントによる表示幅の違いを考慮する。指定された表示領域・長さの制約があれば従う。" +
                 "短くするために重要な意味や口調を損なわない。両立が難しい場合や表示領域が不明で収まりに懸念がある場合は、" +
-                "理由と短い代案を作業報告に示して人間の確認に回す。実際に収まるかは人間が画面で確認する。";
+                "理由と短い代案を作業報告に示して人間の確認に回す。実際に収まるかは人間が画面で確認する。" +
+                "projectProfileは作品全体の対象プレイヤーと雰囲気で、全言語の語彙・口調・文の長さ・表記の大きな指針にする。" +
+                "japaneseKanjiRangeは日本語の列に使う漢字の範囲。シートの方針・用語集・人間の指示・翻訳者の確定訳と食い違う場合はそちらを優先する。" +
+                "ボタン名・機種の機能名はplatformTermsの対象言語の表記を使い、avoidの書き方を使わない。" +
+                "platformTermsとglossaryが食い違う場合はglossaryを優先し、報告する。statusがreferenceの表記は公式ページが無い言語の参考値である。";
             public List<string> languages = new List<string>();
             public LanguageGuidelinesContext languageGuidelines;
+            public ProjectProfileContext projectProfile;
+            public PlatformTermsCatalog platformTerms;
             public List<GlossaryContext> glossary = new List<GlossaryContext>();
             public List<TableContext> translatorExamples = new List<TableContext>();
             public List<TableContext> tables = new List<TableContext>();

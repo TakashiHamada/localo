@@ -186,6 +186,124 @@ namespace Localo.Tests
             Assert.That(LocaloQaMissingKeyCheck.FindCodeKeys("GetLocalizedString(prefix + \"_TITLE\")"), Is.Empty);
         }
 
+        // ---- 機種の公式表記 ----------------------------------------------------------
+
+        [Test]
+        public void PlatformTerms_ReportsUnofficialWordingOnlyForSelectedPlatform()
+        {
+            AddRow("MOUSE", "マウスモードに切り替えます", "Switch to mouse mode.", "切换到鼠标模式");
+            AddRow("OK", "マウス操作に切り替えます", "Switch to mouse controls.", "切换到鼠标操作");
+
+            IReadOnlyList<LocaloQaIssue> unselected = LocaloQa.Run("platform-terms", _settings);
+            Assert.That(unselected, Has.Count.EqualTo(1));
+            Assert.That(unselected[0].Severity, Is.EqualTo(LocaloQaSeverity.Info));
+
+            _settings.targetPlatforms.Add("switch2");
+            IReadOnlyList<LocaloQaIssue> issues = LocaloQa.Run("platform-terms", _settings);
+
+            Assert.That(issues.Select(issue => issue.Key), Is.All.EqualTo("MOUSE"));
+            Assert.That(issues.Select(issue => issue.Language), Is.EquivalentTo(new[]
+            {
+                SystemLanguage.Japanese, SystemLanguage.English, SystemLanguage.ChineseSimplified
+            }));
+            Assert.That(issues.First(issue => issue.Language == SystemLanguage.Japanese).Message, Does.Contain("マウス操作"));
+        }
+
+        [Test]
+        public void PlatformTerms_SkipsWordingRegisteredInGlossary()
+        {
+            AddRow("MOUSE", "マウスモードに切り替えます", "", "");
+            _settings.targetPlatforms.Add("switch2");
+            _settings.glossary.Add(new LocaloGlossaryEntry
+            {
+                source = "マウスモード",
+                translations = new List<LanguageData> { new LanguageData { language = SystemLanguage.Japanese, text = "マウスモード" } }
+            });
+
+            Assert.That(LocaloQa.Run("platform-terms", _settings), Is.Empty);
+        }
+
+        [Test]
+        public void PlatformTerms_MatchesLatinWordingOnWordBoundariesOnly()
+        {
+            PlatformTerms[] switch2 = LocaloPlatformTerms.ForPlatforms(new[] { "switch2" });
+            Assert.That(LocaloQaPlatformTermCheck.FindProblems(switch2, SystemLanguage.English, "Press the A button.", null), Has.Count.EqualTo(1));
+            Assert.That(LocaloQaPlatformTermCheck.FindProblems(switch2, SystemLanguage.English, "Press the A Button.", null), Is.Empty);
+            Assert.That(LocaloQaPlatformTermCheck.FindProblems(switch2, SystemLanguage.English, "Open the DATA button.", null), Is.Empty);
+            Assert.That(LocaloQaPlatformTermCheck.FindProblems(switch2, SystemLanguage.German, "Drücke die L-Taste und den A-Knopf.", null), Is.Empty);
+            Assert.That(LocaloQaPlatformTermCheck.FindProblems(switch2, SystemLanguage.German, "Drücke den L-Knopf.", null), Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public void PlatformTerms_OfficialAndVariantWordingIsNeverReported()
+        {
+            // 同梱データの誤り（公式表記が、同じ用語や別の用語の avoid に一致してしまう）を防ぐ。
+            foreach (PlatformTerms platform in LocaloPlatformTerms.Load().platforms)
+            foreach (PlatformTerm term in platform.terms)
+            foreach (PlatformTermTranslation translation in term.translations)
+            {
+                Assert.That(System.Enum.TryParse(translation.language, out SystemLanguage language), Is.True,
+                    $"{platform.id}/{term.id}: 未知の言語 {translation.language}");
+                Assert.That(translation.status, Is.EqualTo("official").Or.EqualTo("reference"), $"{platform.id}/{term.id}");
+                foreach (string allowed in new[] { translation.text }.Concat(translation.variants ?? new string[0]))
+                    Assert.That(LocaloQaPlatformTermCheck.FindProblems(new[] { platform }, language, allowed, null), Is.Empty,
+                        $"{platform.id}/{term.id}/{translation.language}: 「{allowed}」");
+            }
+        }
+
+        // ---- 漢字の範囲 --------------------------------------------------------------
+
+        [Test]
+        public void KanjiRange_ReportsKanjiAboveTheAudienceDefault()
+        {
+            _settings.projectProfile = new LocaloProjectProfile { audience = "lower-elementary" }; // 小2まで
+            AddRow("OK", "大きな木", "", "");
+            AddRow("NG", "森の湖で準備する", "", "");
+
+            IReadOnlyList<LocaloQaIssue> issues = LocaloQa.Run("kanji-range", _settings);
+
+            Assert.That(issues, Has.Count.EqualTo(1));
+            Assert.That(issues[0].Key, Is.EqualTo("NG"));
+            Assert.That(issues[0].Language, Is.EqualTo(SystemLanguage.Japanese));
+            Assert.That(issues[0].Message, Does.Contain("「湖」（小3）").And.Contain("「準」（小5）").And.Contain("「備」（小5）"));
+            Assert.That(issues[0].Message, Does.Not.Contain("「森」"));
+        }
+
+        [Test]
+        public void KanjiRange_ExplicitRangeOverridesAudienceAndSeparatesJoyoFromNonJoyo()
+        {
+            _settings.projectProfile = new LocaloProjectProfile { audience = "lower-elementary", kanjiRange = "joyo" };
+            AddRow("JOYO", "挨拶と曖昧", "", "");
+            AddRow("RARE", "檸檬を𠮟る", "", "");
+
+            IReadOnlyList<LocaloQaIssue> issues = LocaloQa.Run("kanji-range", _settings);
+
+            Assert.That(issues, Has.Count.EqualTo(1));
+            Assert.That(issues[0].Key, Is.EqualTo("RARE"));
+            Assert.That(issues[0].Message, Does.Contain("「檸」（表外字）").And.Not.Contain("𠮟"));
+        }
+
+        [Test]
+        public void KanjiRange_ReportsInfoWhenNoRangeIsChosen()
+        {
+            AddRow("ANY", "漢字", "", "");
+            IReadOnlyList<LocaloQaIssue> issues = LocaloQa.Run("kanji-range", _settings);
+            Assert.That(issues, Has.Count.EqualTo(1));
+            Assert.That(issues[0].Severity, Is.EqualTo(LocaloQaSeverity.Info));
+        }
+
+        [Test]
+        public void KanjiLevels_MatchTheOfficialCounts()
+        {
+            int[] counts = new int[9];
+            for (int codePoint = 0x3400; codePoint <= 0x2FFFF; codePoint++)
+                if (LocaloKanjiLevels.IsKanji(codePoint)) counts[LocaloKanjiLevels.LevelOf(codePoint)]++;
+            // 学年別漢字配当表（2020年度から）は 80・160・200・202・193・191 字。
+            Assert.That(counts.Skip(1).Take(6), Is.EqualTo(new[] { 80, 160, 200, 202, 193, 191 }));
+            // 常用漢字2136字のうち学年配当外の1110字に、許容字体の「叱」を加えた数。
+            Assert.That(counts[LocaloKanjiLevels.JoyoLevel], Is.EqualTo(1111));
+        }
+
         // ---- フォント --------------------------------------------------------------
 
         [Test]

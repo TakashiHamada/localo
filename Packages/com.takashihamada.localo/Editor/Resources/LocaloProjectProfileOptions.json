@@ -1,0 +1,79 @@
+{
+  "reviewedOn": "2026-11-07",
+  "audiences": [
+    {
+      "id": "preschool",
+      "name": "Preschool",
+      "label": "未就学児",
+      "kanjiRange": "kana",
+      "guidance": "文字を読み始めたばかりの子どもが、ひとりで読める言葉にする。日本語はひらがなとカタカナだけで書き、文節の区切りで分かち書きにしてもよい。1文は短く、抽象的な言葉・比喩・カタカナの外来語の多用を避ける。ほかの言語も、その年齢向けの絵本や幼児向け番組で使われる程度の語彙にする。"
+    },
+    {
+      "id": "lower-elementary",
+      "name": "Lower Elementary (6-8)",
+      "label": "小学校低学年",
+      "kanjiRange": "grade2",
+      "guidance": "6〜8歳がひとりで読める言葉にする。1文は短く、具体的な言葉を使う。むずかしい言葉は言い換え、言い換えられない用語はゲーム内で一度説明する。ほかの言語も、同じ年齢の子ども向けの本や教材で使われる程度の語彙と文の長さにする。"
+    },
+    {
+      "id": "upper-elementary",
+      "name": "Upper Elementary (9-12)",
+      "label": "小学校高学年",
+      "kanjiRange": "grade4",
+      "guidance": "9〜12歳がひとりで読める言葉にする。ゲームの用語は使ってよいが、専門用語や大人向けの慣用句は避けるか言い換える。ほかの言語も、同じ年齢の子ども向けの本や教材で使われる程度の語彙にする。"
+    },
+    {
+      "id": "teen",
+      "name": "Teens",
+      "label": "中高生",
+      "kanjiRange": "joyo",
+      "guidance": "中学生・高校生が無理なく読める言葉にする。一般的なゲームの用語や若者向けの言い回しは使ってよいが、すぐに古くなる流行語やネットスラングは避ける。"
+    },
+    {
+      "id": "all-ages",
+      "name": "All Ages",
+      "label": "全年齢",
+      "kanjiRange": "joyo",
+      "guidance": "子どもから大人まで、ゲームに慣れていない人も含めて誰でも分かる言葉にする。専門用語・ネットスラング・特定の世代や地域にしか通じない表現を避け、遊び方の説明は特に平易にする。"
+    },
+    {
+      "id": "adult",
+      "name": "Adults",
+      "label": "大人",
+      "kanjiRange": "joyo",
+      "guidance": "大人向けの自然な語彙と表記にする。子ども向けに言葉を崩したり、ひらがなを増やしたりしない。難読語や専門的すぎる言葉は避ける。"
+    }
+  ],
+  "genres": [
+    { "id": "action", "name": "Action", "label": "アクション", "guidance": "操作の指示は短く、動詞を先に置いて一目で分かるようにする。" },
+    { "id": "puzzle", "name": "Puzzle", "label": "パズル", "guidance": "ルールとヒントは正確さを優先し、解き方を誤解させる言い方や余計な情報を入れない。" },
+    { "id": "rpg", "name": "RPG", "label": "RPG", "guidance": "固有名詞・能力名・アイテム名の表記を用語集で統一する。数値や効果の説明は、どの言語でも同じ意味になるように訳す。" },
+    { "id": "adventure-novel", "name": "Adventure / Visual Novel", "label": "アドベンチャー・ノベル", "guidance": "文章を読むことが体験の中心になる。キャラクターごとの口調と語り手の文体を作品全体で保ち、読みやすさとリズムを重視する。" },
+    { "id": "simulation", "name": "Simulation", "label": "シミュレーション", "guidance": "UIの項目名・数値・状態の表記を一貫させ、同じものを別の言葉で呼ばない。" },
+    { "id": "sports-racing", "name": "Sports / Racing", "label": "スポーツ・レース", "guidance": "競技の用語は、各言語でその競技に実際に使われている言葉にする。実況や掛け声は短く勢いのある言い方にする。" },
+    { "id": "party", "name": "Party", "label": "パーティ", "guidance": "初めて遊ぶ人もいる前提で、ルールや操作の説明を短く分かりやすくする。大勢で画面を見るため、一目で読める長さにする。" },
+    { "id": "education", "name": "Educational", "label": "教育・学習", "guidance": "学習内容の用語は、各言語・地域の教科書で使われている表記と用語に合わせる。不正解のときも学ぶ意欲をそがない言い方にする。" },
+    { "id": "horror", "name": "Horror", "label": "ホラー", "guidance": "緊張感を保つため、余計な説明や軽い言い回しで雰囲気を壊さない。" }
+  ],
+  "tones": [
+    { "id": "gentle", "name": "Gentle", "label": "やさしい", "guidance": "否定や命令を強く言わず、失敗したときも責めずに励ます言い方にする。強い言葉や脅すような表現を使わない。" },
+    { "id": "cheerful", "name": "Cheerful", "label": "明るい・元気", "guidance": "前向きで勢いのある言い方にする。感嘆符は使ってよいが、多用して読みにくくしない。" },
+    { "id": "comical", "name": "Comical", "label": "コミカル", "guidance": "言葉遊びや冗談を活かす。直訳で笑いが伝わらない場合は、その言語で同じくらい面白い言い方に置き換え、置き換えたことを報告する。" },
+    { "id": "cute", "name": "Cute", "label": "かわいい", "guidance": "やわらかく親しみやすい言葉を選ぶ。ただし、幼すぎる言い方で読みにくくしない。" },
+    { "id": "cool", "name": "Cool", "label": "クール", "guidance": "簡潔で引き締まった言い方にする。余計な感嘆符や擬音を避ける。" },
+    { "id": "serious", "name": "Serious", "label": "シリアス", "guidance": "落ち着いた正確な言葉を選び、冗談めかした言い回しや軽すぎる表現を避ける。" },
+    { "id": "dark", "name": "Dark", "label": "ダーク", "guidance": "重く陰のある世界観を保つ言葉を選ぶ。ただし、対象年齢に合わない残酷な表現を足さない。" },
+    { "id": "elegant", "name": "Calm / Elegant", "label": "落ち着き・上品", "guidance": "丁寧で品のある言葉づかいにし、くだけすぎた表現や俗語を避ける。" }
+  ],
+  "kanjiRanges": [
+    { "id": "kana", "name": "Kana Only", "label": "かなのみ", "maxGrade": 0, "guidance": "日本語は漢字を使わず、ひらがなとカタカナで書く。" },
+    { "id": "grade1", "name": "Up to Grade 1", "label": "小1までの漢字", "maxGrade": 1, "guidance": "日本語の漢字は、学年別漢字配当表の第1学年の漢字だけを使い、それ以外はかなで書く。" },
+    { "id": "grade2", "name": "Up to Grade 2", "label": "小2までの漢字", "maxGrade": 2, "guidance": "日本語の漢字は、学年別漢字配当表の第2学年までの漢字だけを使い、それ以外はかなで書く。" },
+    { "id": "grade3", "name": "Up to Grade 3", "label": "小3までの漢字", "maxGrade": 3, "guidance": "日本語の漢字は、学年別漢字配当表の第3学年までの漢字だけを使い、それ以外はかなで書く。" },
+    { "id": "grade4", "name": "Up to Grade 4", "label": "小4までの漢字", "maxGrade": 4, "guidance": "日本語の漢字は、学年別漢字配当表の第4学年までの漢字だけを使い、それ以外はかなで書く。" },
+    { "id": "grade5", "name": "Up to Grade 5", "label": "小5までの漢字", "maxGrade": 5, "guidance": "日本語の漢字は、学年別漢字配当表の第5学年までの漢字だけを使い、それ以外はかなで書く。" },
+    { "id": "grade6", "name": "Up to Grade 6", "label": "小6までの漢字", "maxGrade": 6, "guidance": "日本語の漢字は、学年別漢字配当表の第6学年まで（小学校で習う1026字）の漢字だけを使い、それ以外はかなで書く。" },
+    { "id": "joyo", "name": "Joyo Kanji", "label": "常用漢字", "maxGrade": 7, "guidance": "日本語は常用漢字の範囲の漢字で書き、表外字と難読語はかなで書く。常用漢字の語を、雰囲気のためだけにかなに開かない。補助動詞や形式名詞（〜てください・こと・とき など）は公用文と同じくかなで書く。" },
+    { "id": "unrestricted", "name": "Unrestricted", "label": "制限なし", "maxGrade": 8, "guidance": "日本語の漢字の範囲は制限しない。ただし、読みにくい語は文脈に合わせてかなにするか、ふりがなを検討する。" }
+  ]
+}

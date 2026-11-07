@@ -59,6 +59,14 @@ namespace Localo.Runtime
         [Tooltip("全シート共通の用語集です。固有名詞や共通用語の正式表記と意味を記録します。")]
         public List<LocaloGlossaryEntry> glossary = new List<LocaloGlossaryEntry>();
 
+        [Header("-- Project Profile --")]
+        [Tooltip("作品全体の対象プレイヤーと雰囲気です。AIの翻訳・仮の文字の指針と、QAの漢字の範囲のチェックに使います。")]
+        public LocaloProjectProfile projectProfile = new LocaloProjectProfile();
+
+        [Header("-- Target Platforms --")]
+        [Tooltip("対象の機種のIDです（例: switch2）。選んだ機種のボタン名などの公式表記を、AIへの指針とQAに使います。")]
+        public List<string> targetPlatforms = new List<string>();
+
         [Header("-- Table Columns --")]
         [Tooltip("TableのKey列の幅をピクセル単位で指定します。")]
         public int keyColumnWidth = 140;
@@ -131,6 +139,23 @@ namespace Localo.Runtime
         public List<LanguageData> translations = new List<LanguageData>();
         [Tooltip("用語の意味・背景・表記上の注意点を記入します。")]
         [TextArea(2, 6)] public string notes = string.Empty;
+    }
+
+    /// <summary>
+    /// 作品全体の対象プレイヤーと雰囲気。値はパッケージ同梱の選択肢（LocaloProjectProfileOptions.json）のIDで、
+    /// 選択肢の並べ替えや追加で既存の設定が変わらないよう、番号ではなく文字列で保存する。
+    /// </summary>
+    [Serializable]
+    public class LocaloProjectProfile
+    {
+        [Tooltip("対象年齢層のIDです。空なら未指定です。")]
+        public string audience = string.Empty;
+        [Tooltip("ジャンルのIDです（複数可）。")]
+        public List<string> genres = new List<string>();
+        [Tooltip("トーンのIDです（複数可）。")]
+        public List<string> tones = new List<string>();
+        [Tooltip("日本語の漢字の範囲のIDです。空なら対象年齢に合わせます。")]
+        public string kanjiRange = string.Empty;
     }
 
     /// <summary>

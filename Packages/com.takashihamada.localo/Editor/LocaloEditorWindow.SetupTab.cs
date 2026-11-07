@@ -15,7 +15,6 @@ using Localo.Runtime;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
-using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 
 namespace Localo.Editor
 {
@@ -103,6 +102,14 @@ namespace Localo.Editor
                         "翻訳元を変更するときは、既存の原文とSource Termがその言語で書かれているか確認してください。",
                         MessageType.None);
                 }
+
+                EditorGUILayout.Space(8f);
+                using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+                    DrawProjectProfileSection();
+
+                EditorGUILayout.Space(8f);
+                using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+                    DrawTargetPlatformsSection();
 
                 EditorGUILayout.Space(8f);
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
@@ -229,9 +236,8 @@ namespace Localo.Editor
 
         private void InstallProjectSkill(bool isInstalled)
         {
-            string packageAssetPath = GetPackageAssetPath();
-            var skillTemplate = LoadPackageTextAsset(packageAssetPath, ProjectSkillTemplateRelativePath);
-            var metadataTemplate = LoadPackageTextAsset(packageAssetPath, ProjectSkillMetadataTemplateRelativePath);
+            var skillTemplate = LocaloPackageFiles.LoadText(ProjectSkillTemplateRelativePath);
+            var metadataTemplate = LocaloPackageFiles.LoadText(ProjectSkillMetadataTemplateRelativePath);
             if (skillTemplate == null || metadataTemplate == null)
             {
                 EditorUtility.DisplayDialog(
@@ -275,18 +281,6 @@ namespace Localo.Editor
                     "AIスキルを書き込めませんでした。プロジェクトフォルダーの書き込み権限を確認してください。",
                     "OK");
             }
-        }
-
-        private static string GetPackageAssetPath()
-        {
-            PackageInfo packageInfo = PackageInfo.FindForAssembly(typeof(LocaloEditorWindow).Assembly);
-            return packageInfo?.assetPath;
-        }
-
-        private static TextAsset LoadPackageTextAsset(string packageAssetPath, string relativePath)
-        {
-            if (string.IsNullOrEmpty(packageAssetPath)) return null;
-            return AssetDatabase.LoadAssetAtPath<TextAsset>($"{packageAssetPath}/{relativePath}");
         }
 
         /// <summary>

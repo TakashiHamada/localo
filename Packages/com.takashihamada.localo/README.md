@@ -42,7 +42,7 @@ string rowContext = LocaloTranslationContext.ExportRowToString(table, "MY_KEY");
 LocaloTranslationContext.SetRowContext(table, "MY_KEY", sceneText, displaySpaceText);
 ```
 
-場面は `LocalizationRow.aiScene`、器は `LocalizationRow.aiDisplaySpace`、文章の種類は `LocalizationTable.textType`、シートの方針は `LocalizationTable.translationInstructions`、用語集は `LocalizationSettings.glossary` に保存します。`SetRowContext` は `null` を渡した項目を変更しません。変更はUndoに対応します。旧版の `aiResearch` の内容は `aiScene` として読み込まれ、`SetResearch` は場面を保存する互換APIとして残しています。CSVは従来の列構成を維持し、文章の種類・方針・用語集・場面・器の読み出しにはJSON出力APIを使います。場面・器の保存にはSetRowContextを使い、用語集専用の取り込みAPIはありません。JSONのスキーマはversion 5です。
+場面は `LocalizationRow.aiScene`、器は `LocalizationRow.aiDisplaySpace`、文章の種類は `LocalizationTable.textType`、シートの方針は `LocalizationTable.translationInstructions`、用語集は `LocalizationSettings.glossary` に保存します。`SetRowContext` は `null` を渡した項目を変更しません。変更はUndoに対応します。旧版の `aiResearch` の内容は `aiScene` として読み込まれ、`SetResearch` は場面を保存する互換APIとして残しています。CSVは従来の列構成を維持し、文章の種類・方針・用語集・場面・器の読み出しにはJSON出力APIを使います。場面・器の保存にはSetRowContextを使い、用語集専用の取り込みAPIはありません。JSONのスキーマはversion 6です。
 
 ### 言語別ガイドと口調の統一
 
@@ -53,6 +53,14 @@ Translationタブの **Language Guidelines** は、8言語の対象地域と注�
 AIには、翻訳前にシート全体の原文と既存訳を読み、言語ごと・相手との関係ごとに口調を決めて統一する手順を渡します。人間の指定と翻訳者の確定訳を優先し、推定した方針と未解決の矛盾は作業報告に記載します。対象シート全体が未確認なら全体のJSONを取得し、確認後は行単位のJSONも使えます。
 
 APIは `ExportToString(targetLanguages: new[] { SystemLanguage.Korean })` のように、ガイドを有効な対象言語だけに絞れます。`ExportRowToString` も同じ引数を持ちます。この引数はガイドだけを絞り、原文・用語集・翻訳者のお手本は削除しません。配布用Skillを導入済みのプロジェクトは、SetupからSkillを更新すると新しい参照手順も反映されます。
+
+### 作品プロファイルと機種の公式表記
+
+Setupの **Project Profile** で、作品全体の対象年齢・ジャンル・トーンと、日本語が有効な場合は漢字の範囲（小1〜小6まで・常用漢字など。未指定なら対象年齢に合わせる）を選びます。設定アセットには選択肢のIDだけを保存し、選択肢とAI向けの指針文は同梱の `Editor/Resources/LocaloProjectProfileOptions.json` で管理します。AI向けJSONの `projectProfile` に指針文ごと入り、翻訳や仮の文字の基準になります。TranslationタブのLanguage Guidelinesの先頭でも確認できます。
+
+Setupの **Target Platforms** で対象の機種を選ぶと、同梱の `Editor/Resources/LocaloPlatformTerms.json` にあるボタン名・機能名の公式表記（現在はNintendo Switch 2）を、AI向けJSONの `platformTerms` とQAに使います。一覧はGlossaryタブの **Platform Terms** で確認できます。一般公開の製品ページの表記で、ロットチェックなどの用語規定ではありません。正式な用語集はGlossaryに記入してください（Glossaryが優先されます）。
+
+QAタブの **Platform Terms** は非公式な書き方（例:「マウスモード」→「マウス操作」）を、**Kanji Range** は漢字の範囲を超える漢字を探します。漢字の学年は文部科学省の学年別漢字配当表（2020年度から実施）によります。
 
 ### 翻訳者担当の列を保護する
 

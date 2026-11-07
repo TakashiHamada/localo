@@ -151,6 +151,8 @@ namespace Localo.Editor
             new LocaloQaManualLineBreakCheck(),
             new LocaloQaWhitespaceCheck(),
             new LocaloQaPunctuationCheck(),
+            new LocaloQaPlatformTermCheck(),
+            new LocaloQaKanjiRangeCheck(),
             new LocaloQaLegacyTextCheck(),
             new LocaloQaLineBreakSettingsCheck()
         };

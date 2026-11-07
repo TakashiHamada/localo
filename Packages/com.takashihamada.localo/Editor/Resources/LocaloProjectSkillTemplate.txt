@@ -39,12 +39,21 @@ Treat `Packages/com.takashihamada.localo/` as the installed tool and `Assets/Loc
 
 ### 言語別ガイドとシートの口調
 
-- コンテキストJSONはschema version 5。ルートの`sourceLanguage`の言語を原文とし、他の言語へ翻訳する。原文が空欄なら他言語から推測せず報告する。翻訳元の文章を翻訳先として上書きしない。`languageGuidelines.commonPoints`と翻訳先に対応する`languageGuidelines.languages`を翻訳前に読む。`locale`・`region`・`points`・`notes`と出典を参照する。TranslationタブのLanguage Guidelinesも同じ資料を表示する。
+- コンテキストJSONはschema version 6。ルートの`sourceLanguage`の言語を原文とし、他の言語へ翻訳する。原文が空欄なら他言語から推測せず報告する。翻訳元の文章を翻訳先として上書きしない。`languageGuidelines.commonPoints`と翻訳先に対応する`languageGuidelines.languages`を翻訳前に読む。`locale`・`region`・`points`・`notes`と出典を参照する。TranslationタブのLanguage Guidelinesも同じ資料を表示する。
 - 既定はen-US・ko-KR・zh-CN・zh-TW・de-DE・fr-FR・es-419・pt-BR。人間の地域・口調の指定、用語集、翻訳者の確定訳を優先し、一般的なガイドで上書きしない。
 - 翻訳前にシート全体の原文と既存訳を読み、対象言語ごとの口調方針を決める。人間のシート方針、用語集、同じシートの翻訳者の確定訳を優先し、未指定なら話者・相手・場面から敬語・呼称・語尾などを推定する。人間の翻訳方針の欄を推定結果で書き換えない。
 - 同じ話者と相手の関係では口調を揃える。例えば韓国語の합니다体・해요体・반말は関係と場面で使い分け、相手によって変わる敬語や、感情・関係の変化に伴う意図的な切替を一律に揃えない。別シートの訳から話者の口調を無条件に流用しない。
 - 対象シート全体が未確認なら`ExportToString()`で取得し、口調方針を決める。全体の確認後は行単位のJSONも使える。推定した言語別の口調方針を作業報告に添える。既存訳との矛盾や関係性の不明点は、調べても解決できなければKey・言語・理由を添えて人間に報告する。
 - `ExportToString(targetLanguages: new[] { SystemLanguage.Korean })`のように、ガイドだけを有効な対象言語に絞れる。`ExportRowToString`も同じ引数を持つ。原文・用語集・お手本の言語はこの引数で削除されない。引数を省略すると有効な全言語のガイドを含む。日本語は今回の言語別ガイドの対象外。
+
+### 作品プロファイルと機種の公式表記
+
+- SetupのProject Profileは `LocalizationSettings.projectProfile` に、選択肢のIDだけを保存する（対象年齢・ジャンル・トーン・日本語の漢字の範囲）。選択肢と指針文はパッケージ同梱の `Editor/Resources/LocaloProjectProfileOptions.json` にある。AIはこの設定を変更しない。
+- コンテキストJSONの `projectProfile` は、選んだ項目の表示名と `guidance`（指針文）を含む。全言語の語彙・口調・文の長さ・表記の大きな指針にする。シートの方針・用語集・人間の指示・翻訳者の確定訳と食い違う場合はそちらを優先する。`japaneseKanjiRange` は日本語の列にだけ適用する。
+- 仮の文字（まだ原文が決まっていない文言の仮置き）や新しい文言を書くときも、`projectProfile` の対象年齢・トーン・漢字の範囲と `platformTerms` に従う。書いた仮の文字は仮であることを作業報告に書く。
+- SetupのTarget Platformsで選んだ機種は `LocalizationSettings.targetPlatforms` に保存される。コンテキストJSONの `platformTerms` は、その機種のボタン名・機能名の公式表記（有効な言語のみ）。ボタン名などは対象言語の `text` を使い、`avoid` の書き方を使わない。`status` が `reference` の表記は公式ページが無い言語の参考値なので、採用したら報告する。
+- `platformTerms` は一般公開の製品ページの表記で、ロットチェックなどの用語規定ではない。Glossaryに同じ語があればGlossaryを優先し、食い違いを報告する。同梱データに無い機種・用語を推測で補わない。
+- QAの `platform-terms` は `avoid` の書き方を、`kanji-range` は範囲を超える漢字を探す。漢字を直すときは、かなに開くか範囲内の語に言い換える。読み（音訓）が範囲内かどうかは機械的に調べられないため、自己レビューで確認する。
 
 ### 行の文脈（場面と器）の調査手順
 

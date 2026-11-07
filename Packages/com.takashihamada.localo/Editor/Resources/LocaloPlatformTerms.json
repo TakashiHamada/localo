@@ -1,0 +1,341 @@
+{
+  "reviewedOn": "2026-11-07",
+  "notice": "任天堂などの一般公開の製品ページに載っている表記です。ロットチェックなどの開発者向けの用語規定ではありません。正式な用語集を入手した場合は、プロジェクトのGlossaryに記入してください（Glossaryが優先されます）。statusがreferenceの表記は、公式ページが無い言語の参考値です。avoidはLocaloが選んだ「よくある非公式な書き方」の一覧で、公式の資料ではありません。作品で意図して使う書き方はGlossaryに登録すると、QAの対象外になります。",
+  "platforms": [
+    {
+      "id": "switch2",
+      "name": "Nintendo Switch 2",
+      "notes": [
+        "英字（A・L・ZRなど）は、日本語の公式ページでも半角で書かれています。＋・－は部位名の一覧では全角です。",
+        "ドイツ語は、L・R・ZL・ZRが「-Taste」、それ以外のボタンが「-Knopf」です。",
+        "英語・スペイン語（中南米）・ポルトガル語（ブラジル）の米州向けページは、左右のJoy-Con 2を角括弧で「Joy-Con 2 [L]」と書きます。欧州・アジアのページは丸括弧です。",
+        "簡体字中国語の公式ページはありません。簡体字の表記は、繁体字の公式表記を簡体字にした参考値です。"
+      ],
+      "sources": [
+        { "title": "Nintendo Switch 2 仕様（日本）", "url": "https://www.nintendo.com/jp/hardware/switch2/specs/" },
+        { "title": "Nintendo Switch 2（日本）", "url": "https://www.nintendo.com/jp/hardware/switch2/" },
+        { "title": "Nintendo Switch 2 Tech Specs (US)", "url": "https://www.nintendo.com/us/gaming-systems/switch-2/tech-specs/" },
+        { "title": "Nintendo Switch 2 Features (US)", "url": "https://www.nintendo.com/us/gaming-systems/switch-2/features/" },
+        { "title": "Nintendo Switch 2 Specifications (UK)", "url": "https://www.nintendo.com/en-gb/Hardware/Nintendo-Switch-2/Nintendo-Switch-2-Specifications-2785627.html" },
+        { "title": "Nintendo Switch 2 Technische Daten (DE)", "url": "https://www.nintendo.com/de-de/Hardware/Nintendo-Switch-2/Nintendo-Switch-2-Specifications-2785627.html" },
+        { "title": "Nintendo Switch 2 Caractéristiques (FR)", "url": "https://www.nintendo.com/fr-fr/Hardware/Nintendo-Switch-2/Nintendo-Switch-2-Specifications-2785627.html" },
+        { "title": "Nintendo Switch 2 Especificaciones (MX)", "url": "https://www.nintendo.com/es-mx/gaming-systems/switch-2/tech-specs/" },
+        { "title": "Nintendo Switch 2 Especificações (BR)", "url": "https://www.nintendo.com/pt-br/gaming-systems/switch-2/tech-specs/" },
+        { "title": "Nintendo Switch 2 規格（台灣）", "url": "https://www.nintendo.com/tw/hardware/switch2/specs/" },
+        { "title": "Nintendo Switch 2 사양（한국）", "url": "https://www.nintendo.com/kr/hardware/switch2/specs/" }
+      ],
+      "terms": [
+        {
+          "id": "console",
+          "category": "console",
+          "notes": "本体の名前。「Switch」と「2」の間に半角スペースを入れます。",
+          "translations": [
+            { "language": "Japanese", "text": "Nintendo Switch 2", "status": "official", "variants": [], "avoid": ["Nintendo Switch2"] },
+            { "language": "English", "text": "Nintendo Switch 2", "status": "official", "variants": [], "avoid": ["Nintendo Switch2"] },
+            { "language": "German", "text": "Nintendo Switch 2", "status": "official", "variants": [], "avoid": ["Nintendo Switch2"] },
+            { "language": "French", "text": "Nintendo Switch 2", "status": "official", "variants": [], "avoid": ["Nintendo Switch2"] },
+            { "language": "Spanish", "text": "Nintendo Switch 2", "status": "official", "variants": [], "avoid": ["Nintendo Switch2"] },
+            { "language": "Portuguese", "text": "Nintendo Switch 2", "status": "official", "variants": [], "avoid": ["Nintendo Switch2"] },
+            { "language": "Korean", "text": "Nintendo Switch 2", "status": "official", "variants": [], "avoid": ["Nintendo Switch2"] },
+            { "language": "ChineseTraditional", "text": "Nintendo Switch 2", "status": "official", "variants": [], "avoid": ["Nintendo Switch2"] },
+            { "language": "ChineseSimplified", "text": "Nintendo Switch 2", "status": "reference", "variants": [], "avoid": ["Nintendo Switch2"] }
+          ]
+        },
+        {
+          "id": "joy-con-2",
+          "category": "controller",
+          "notes": "コントローラーの名前。「Joy-Con」と「2」の間に半角スペースを入れます。",
+          "translations": [
+            { "language": "Japanese", "text": "Joy-Con 2", "status": "official", "variants": [], "avoid": ["Joy-Con2", "JoyCon 2", "JoyCon2", "Joycon 2", "Joycon2", "Joy Con 2"] },
+            { "language": "English", "text": "Joy-Con 2", "status": "official", "variants": ["Joy-Con 2 controllers"], "avoid": ["Joy-Con2", "JoyCon 2", "JoyCon2", "Joycon 2", "Joycon2", "Joy Con 2"] },
+            { "language": "German", "text": "Joy-Con 2", "status": "official", "variants": ["Joy-Con 2-Controller"], "avoid": ["Joy-Con2", "JoyCon 2", "JoyCon2", "Joycon 2", "Joycon2", "Joy Con 2"] },
+            { "language": "French", "text": "Joy-Con 2", "status": "official", "variants": [], "avoid": ["Joy-Con2", "JoyCon 2", "JoyCon2", "Joycon 2", "Joycon2", "Joy Con 2"] },
+            { "language": "Spanish", "text": "Joy-Con 2", "status": "official", "variants": [], "avoid": ["Joy-Con2", "JoyCon 2", "JoyCon2", "Joycon 2", "Joycon2", "Joy Con 2"] },
+            { "language": "Portuguese", "text": "Joy-Con 2", "status": "official", "variants": [], "avoid": ["Joy-Con2", "JoyCon 2", "JoyCon2", "Joycon 2", "Joycon2", "Joy Con 2"] },
+            { "language": "Korean", "text": "Joy-Con 2", "status": "official", "variants": [], "avoid": ["Joy-Con2", "JoyCon 2", "JoyCon2", "Joycon 2", "Joycon2", "Joy Con 2"] },
+            { "language": "ChineseTraditional", "text": "Joy-Con 2", "status": "official", "variants": [], "avoid": ["Joy-Con2", "JoyCon 2", "JoyCon2", "Joycon 2", "Joycon2", "Joy Con 2"] },
+            { "language": "ChineseSimplified", "text": "Joy-Con 2", "status": "reference", "variants": [], "avoid": ["Joy-Con2", "JoyCon 2", "JoyCon2", "Joycon 2", "Joycon2", "Joy Con 2"] }
+          ]
+        },
+        {
+          "id": "joy-con-2-left-right",
+          "category": "controller",
+          "notes": "左右のJoy-Con 2。括弧の形はページによって異なるため、どちらも誤りとはしません。",
+          "translations": [
+            { "language": "Japanese", "text": "Joy-Con 2（L） / Joy-Con 2（R）", "status": "official", "variants": ["Joy-Con 2 (L)", "Joy-Con 2 (R)"], "avoid": [] },
+            { "language": "English", "text": "Joy-Con 2 [L] / Joy-Con 2 [R]", "status": "official", "variants": ["Joy-Con 2 (L)", "Joy-Con 2 (R)"], "avoid": [] },
+            { "language": "German", "text": "Joy-Con 2 (L) / Joy-Con 2 (R)", "status": "official", "variants": [], "avoid": [] },
+            { "language": "French", "text": "Joy-Con 2 (L) / Joy-Con 2 (R)", "status": "official", "variants": ["Joy-Con 2 [L]", "Joy-Con 2 [R]"], "avoid": [] },
+            { "language": "Spanish", "text": "Joy-Con 2 [L] / Joy-Con 2 [R]", "status": "official", "variants": ["Joy-Con 2 (L)", "Joy-Con 2 (R)"], "avoid": [] },
+            { "language": "Portuguese", "text": "Joy-Con 2 [L] / Joy-Con 2 [R]", "status": "official", "variants": ["Joy-Con 2 (L)", "Joy-Con 2 (R)"], "avoid": [] },
+            { "language": "Korean", "text": "Joy-Con 2 (L) / Joy-Con 2 (R)", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseTraditional", "text": "Joy-Con 2 (L) / Joy-Con 2 (R)", "status": "official", "variants": ["Joy-Con 2（L）", "Joy-Con 2（R）"], "avoid": [] },
+            { "language": "ChineseSimplified", "text": "Joy-Con 2 (L) / Joy-Con 2 (R)", "status": "reference", "variants": [], "avoid": [] }
+          ]
+        },
+        {
+          "id": "button-abxy",
+          "category": "button",
+          "notes": "",
+          "translations": [
+            { "language": "Japanese", "text": "Aボタン / Bボタン / Xボタン / Yボタン", "status": "official", "variants": [], "avoid": [] },
+            { "language": "English", "text": "A Button / B Button / X Button / Y Button", "status": "official", "variants": [], "avoid": ["A button", "B button", "X button", "Y button"] },
+            { "language": "German", "text": "A-Knopf / B-Knopf / X-Knopf / Y-Knopf", "status": "official", "variants": [], "avoid": ["A-Taste", "B-Taste", "X-Taste", "Y-Taste"] },
+            { "language": "French", "text": "Bouton A / Bouton B / Bouton X / Bouton Y", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Spanish", "text": "Botón A / Botón B / Botón X / Botón Y", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Portuguese", "text": "Botão A / Botão B / Botão X / Botão Y", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Korean", "text": "A 버튼 / B 버튼 / X 버튼 / Y 버튼", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseTraditional", "text": "A鍵 / B鍵 / X鍵 / Y鍵", "status": "official", "variants": [], "avoid": ["A按鈕", "B按鈕", "X按鈕", "Y按鈕"] },
+            { "language": "ChineseSimplified", "text": "A键 / B键 / X键 / Y键", "status": "reference", "variants": [], "avoid": ["A按钮", "B按钮", "X按钮", "Y按钮"] }
+          ]
+        },
+        {
+          "id": "button-l-r",
+          "category": "button",
+          "notes": "",
+          "translations": [
+            { "language": "Japanese", "text": "Lボタン / Rボタン", "status": "official", "variants": [], "avoid": [] },
+            { "language": "English", "text": "L Button / R Button", "status": "official", "variants": [], "avoid": ["L button", "R button"] },
+            { "language": "German", "text": "L-Taste / R-Taste", "status": "official", "variants": [], "avoid": ["L-Knopf", "R-Knopf"] },
+            { "language": "French", "text": "Bouton L / Bouton R", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Spanish", "text": "Botón L / Botón R", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Portuguese", "text": "Botão L / Botão R", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Korean", "text": "L 버튼 / R 버튼", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseTraditional", "text": "L鍵 / R鍵", "status": "official", "variants": [], "avoid": ["L按鈕", "R按鈕"] },
+            { "language": "ChineseSimplified", "text": "L键 / R键", "status": "reference", "variants": [], "avoid": ["L按钮", "R按钮"] }
+          ]
+        },
+        {
+          "id": "button-zl-zr",
+          "category": "button",
+          "notes": "",
+          "translations": [
+            { "language": "Japanese", "text": "ZLボタン / ZRボタン", "status": "official", "variants": [], "avoid": [] },
+            { "language": "English", "text": "ZL Button / ZR Button", "status": "official", "variants": [], "avoid": ["ZL button", "ZR button"] },
+            { "language": "German", "text": "ZL-Taste / ZR-Taste", "status": "official", "variants": [], "avoid": ["ZL-Knopf", "ZR-Knopf"] },
+            { "language": "French", "text": "Bouton ZL / Bouton ZR", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Spanish", "text": "Botón ZL / Botón ZR", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Portuguese", "text": "Botão ZL / Botão ZR", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Korean", "text": "ZL 버튼 / ZR 버튼", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseTraditional", "text": "ZL鍵 / ZR鍵", "status": "official", "variants": [], "avoid": ["ZL按鈕", "ZR按鈕"] },
+            { "language": "ChineseSimplified", "text": "ZL键 / ZR键", "status": "reference", "variants": [], "avoid": ["ZL按钮", "ZR按钮"] }
+          ]
+        },
+        {
+          "id": "button-sl-sr",
+          "category": "button",
+          "notes": "",
+          "translations": [
+            { "language": "Japanese", "text": "SLボタン / SRボタン", "status": "official", "variants": [], "avoid": [] },
+            { "language": "English", "text": "SL Button / SR Button", "status": "official", "variants": [], "avoid": ["SL button", "SR button"] },
+            { "language": "German", "text": "SL-Knopf / SR-Knopf", "status": "official", "variants": [], "avoid": ["SL-Taste", "SR-Taste"] },
+            { "language": "French", "text": "Bouton SL / Bouton SR", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Spanish", "text": "Botón SL / Botón SR", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Portuguese", "text": "Botão SL / Botão SR", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Korean", "text": "SL 버튼 / SR 버튼", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseTraditional", "text": "SL鍵 / SR鍵", "status": "official", "variants": [], "avoid": ["SL按鈕", "SR按鈕"] },
+            { "language": "ChineseSimplified", "text": "SL键 / SR键", "status": "reference", "variants": [], "avoid": ["SL按钮", "SR按钮"] }
+          ]
+        },
+        {
+          "id": "button-plus-minus",
+          "category": "button",
+          "notes": "＋・－の記号の幅はページによって異なるため、どちらも誤りとはしません。",
+          "translations": [
+            { "language": "Japanese", "text": "＋ボタン / －ボタン", "status": "official", "variants": ["+ボタン", "-ボタン"], "avoid": [] },
+            { "language": "English", "text": "+ Button / − Button", "status": "official", "variants": ["- Button"], "avoid": ["+ button", "- button", "− button"] },
+            { "language": "German", "text": "Plus-Knopf / Minus-Knopf", "status": "official", "variants": [], "avoid": ["Plus-Taste", "Minus-Taste"] },
+            { "language": "French", "text": "Bouton + / Bouton −", "status": "official", "variants": ["Bouton -"], "avoid": [] },
+            { "language": "Spanish", "text": "Botón + / Botón −", "status": "official", "variants": ["Botón -"], "avoid": [] },
+            { "language": "Portuguese", "text": "Botão + / Botão −", "status": "official", "variants": ["Botão -"], "avoid": [] },
+            { "language": "Korean", "text": "＋ 버튼 / － 버튼", "status": "official", "variants": ["+ 버튼", "- 버튼"], "avoid": [] },
+            { "language": "ChineseTraditional", "text": "＋鍵 / －鍵", "status": "official", "variants": ["+鍵", "-鍵"], "avoid": [] },
+            { "language": "ChineseSimplified", "text": "＋键 / －键", "status": "reference", "variants": ["+键", "-键"], "avoid": [] }
+          ]
+        },
+        {
+          "id": "button-home",
+          "category": "button",
+          "notes": "HOMEはすべて大文字です。",
+          "translations": [
+            { "language": "Japanese", "text": "HOMEボタン", "status": "official", "variants": [], "avoid": ["ホームボタン", "Homeボタン"] },
+            { "language": "English", "text": "HOME Button", "status": "official", "variants": [], "avoid": ["Home Button", "Home button", "home button", "HOME button"] },
+            { "language": "German", "text": "HOME-Knopf", "status": "official", "variants": [], "avoid": ["Home-Knopf", "HOME-Taste", "Home-Taste"] },
+            { "language": "French", "text": "Bouton HOME", "status": "official", "variants": [], "avoid": ["Bouton Home", "bouton Home"] },
+            { "language": "Spanish", "text": "Botón HOME", "status": "official", "variants": [], "avoid": ["Botón Home", "botón Home"] },
+            { "language": "Portuguese", "text": "Botão HOME", "status": "official", "variants": [], "avoid": ["Botão Home", "botão Home"] },
+            { "language": "Korean", "text": "HOME 버튼", "status": "official", "variants": [], "avoid": ["홈 버튼", "Home 버튼"] },
+            { "language": "ChineseTraditional", "text": "HOME鍵", "status": "official", "variants": [], "avoid": ["Home鍵", "HOME按鈕"] },
+            { "language": "ChineseSimplified", "text": "HOME键", "status": "reference", "variants": [], "avoid": ["Home键", "HOME按钮"] }
+          ]
+        },
+        {
+          "id": "button-capture",
+          "category": "button",
+          "notes": "画面写真や動画を撮るボタン（Joy-Con 2（L））。",
+          "translations": [
+            { "language": "Japanese", "text": "キャプチャーボタン", "status": "official", "variants": [], "avoid": ["キャプチャボタン"] },
+            { "language": "English", "text": "Capture Button", "status": "official", "variants": [], "avoid": ["Capture button"] },
+            { "language": "German", "text": "Aufnahmeknopf", "status": "official", "variants": [], "avoid": [] },
+            { "language": "French", "text": "Bouton de capture d'écran", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Spanish", "text": "Botón de captura", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Portuguese", "text": "Botão de captura de tela", "status": "official", "variants": ["Botão de captura"], "avoid": [] },
+            { "language": "Korean", "text": "캡처 버튼", "status": "official", "variants": ["캡쳐 버튼"], "avoid": [] },
+            { "language": "ChineseTraditional", "text": "拍攝鍵", "status": "official", "variants": [], "avoid": ["擷取鍵", "截圖鍵"] },
+            { "language": "ChineseSimplified", "text": "拍摄键", "status": "reference", "variants": [], "avoid": [] }
+          ]
+        },
+        {
+          "id": "button-c",
+          "category": "button",
+          "notes": "ゲームチャットを呼び出すボタン（Joy-Con 2（R））。",
+          "translations": [
+            { "language": "Japanese", "text": "Cボタン", "status": "official", "variants": [], "avoid": [] },
+            { "language": "English", "text": "C Button", "status": "official", "variants": [], "avoid": ["C button"] },
+            { "language": "German", "text": "C-Knopf", "status": "official", "variants": [], "avoid": ["C-Taste"] },
+            { "language": "French", "text": "Bouton C", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Spanish", "text": "Botón C", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Portuguese", "text": "Botão C", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Korean", "text": "C 버튼", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseTraditional", "text": "C鍵", "status": "official", "variants": [], "avoid": ["C按鈕"] },
+            { "language": "ChineseSimplified", "text": "C键", "status": "reference", "variants": [], "avoid": ["C按钮"] }
+          ]
+        },
+        {
+          "id": "button-directional",
+          "category": "button",
+          "notes": "Joy-Con 2（L）の上下左右のボタン。米州向けの英語・スペイン語・ポルトガル語のページは上下左右を列挙し、まとめた名前を使いません（ここでは欧州のページの表記）。",
+          "translations": [
+            { "language": "Japanese", "text": "方向ボタン", "status": "official", "variants": [], "avoid": [] },
+            { "language": "English", "text": "Directional Buttons", "status": "official", "variants": [], "avoid": [] },
+            { "language": "German", "text": "Richtungsknöpfe", "status": "official", "variants": [], "avoid": [] },
+            { "language": "French", "text": "Boutons directionnels", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Spanish", "text": "Botones direccionales", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Portuguese", "text": "Botões direcionais", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Korean", "text": "방향 버튼", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseTraditional", "text": "方向鍵", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseSimplified", "text": "方向键", "status": "reference", "variants": [], "avoid": [] }
+          ]
+        },
+        {
+          "id": "stick",
+          "category": "stick",
+          "notes": "押し込むとボタンとしても使えます（日本語ではLスティックボタンなど）。",
+          "translations": [
+            { "language": "Japanese", "text": "Lスティック / Rスティック", "status": "official", "variants": [], "avoid": [] },
+            { "language": "English", "text": "Left Stick / Right Stick", "status": "official", "variants": [], "avoid": [] },
+            { "language": "German", "text": "Linker Stick / Rechter Stick", "status": "official", "variants": [], "avoid": [] },
+            { "language": "French", "text": "Stick gauche / Stick droit", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Spanish", "text": "Palanca izquierda / Palanca derecha", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Portuguese", "text": "Botão analógico da esquerda / Botão analógico da direita", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Korean", "text": "L 스틱 / R 스틱", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseTraditional", "text": "L操控搖桿 / R操控搖桿", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseSimplified", "text": "L操控摇杆 / R操控摇杆", "status": "reference", "variants": [], "avoid": [] }
+          ]
+        },
+        {
+          "id": "button-power",
+          "category": "button",
+          "notes": "本体の電源ボタン。",
+          "translations": [
+            { "language": "Japanese", "text": "電源ボタン", "status": "official", "variants": [], "avoid": [] },
+            { "language": "English", "text": "POWER Button", "status": "official", "variants": [], "avoid": ["Power Button", "Power button", "power button"] },
+            { "language": "German", "text": "POWER-Knopf", "status": "official", "variants": [], "avoid": [] },
+            { "language": "French", "text": "Bouton POWER", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Spanish", "text": "Botón POWER", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Portuguese", "text": "Botão POWER", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Korean", "text": "전원 버튼", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseTraditional", "text": "電源鍵", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseSimplified", "text": "电源键", "status": "reference", "variants": [], "avoid": [] }
+          ]
+        },
+        {
+          "id": "home-menu",
+          "category": "feature",
+          "notes": "",
+          "translations": [
+            { "language": "Japanese", "text": "HOMEメニュー", "status": "official", "variants": [], "avoid": ["ホームメニュー"] },
+            { "language": "English", "text": "HOME Menu", "status": "official", "variants": [], "avoid": ["Home Menu", "Home menu", "home menu"] },
+            { "language": "German", "text": "HOME-Menü", "status": "official", "variants": [], "avoid": ["Home-Menü"] }
+          ]
+        },
+        {
+          "id": "mode-tv",
+          "category": "mode",
+          "notes": "",
+          "translations": [
+            { "language": "Japanese", "text": "TVモード", "status": "official", "variants": ["TV モード"], "avoid": [] },
+            { "language": "English", "text": "TV mode", "status": "official", "variants": [], "avoid": [] },
+            { "language": "German", "text": "TV-Modus", "status": "official", "variants": [], "avoid": [] },
+            { "language": "French", "text": "mode TV", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Spanish", "text": "modo TV", "status": "official", "variants": ["modo televisor"], "avoid": [] },
+            { "language": "Portuguese", "text": "modo TV", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Korean", "text": "TV 모드", "status": "official", "variants": ["TV모드"], "avoid": [] },
+            { "language": "ChineseTraditional", "text": "TV模式", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseSimplified", "text": "TV模式", "status": "reference", "variants": [], "avoid": [] }
+          ]
+        },
+        {
+          "id": "mode-tabletop",
+          "category": "mode",
+          "notes": "スペイン語とポルトガル語は、米州向け（modo semiportátil）と欧州向けで表記が異なります。",
+          "translations": [
+            { "language": "Japanese", "text": "テーブルモード", "status": "official", "variants": [], "avoid": ["テーブルトップモード"] },
+            { "language": "English", "text": "tabletop mode", "status": "official", "variants": [], "avoid": [] },
+            { "language": "German", "text": "Tisch-Modus", "status": "official", "variants": [], "avoid": [] },
+            { "language": "French", "text": "mode sur table", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Spanish", "text": "modo semiportátil", "status": "official", "variants": ["modo sobremesa"], "avoid": [] },
+            { "language": "Portuguese", "text": "modo semiportátil", "status": "official", "variants": ["modo de superfície estável"], "avoid": [] },
+            { "language": "Korean", "text": "테이블 모드", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseTraditional", "text": "桌上模式", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseSimplified", "text": "桌上模式", "status": "reference", "variants": [], "avoid": [] }
+          ]
+        },
+        {
+          "id": "mode-handheld",
+          "category": "mode",
+          "notes": "",
+          "translations": [
+            { "language": "Japanese", "text": "携帯モード", "status": "official", "variants": [], "avoid": [] },
+            { "language": "English", "text": "handheld mode", "status": "official", "variants": [], "avoid": [] },
+            { "language": "German", "text": "Handheld-Modus", "status": "official", "variants": [], "avoid": [] },
+            { "language": "French", "text": "mode portable", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Spanish", "text": "modo portátil", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Portuguese", "text": "modo portátil", "status": "official", "variants": [], "avoid": [] },
+            { "language": "Korean", "text": "휴대 모드", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseTraditional", "text": "手提模式", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseSimplified", "text": "手提模式", "status": "reference", "variants": [], "avoid": [] }
+          ]
+        },
+        {
+          "id": "mouse-controls",
+          "category": "feature",
+          "notes": "Joy-Con 2をマウスとして使う機能。公式の機能名は「マウスモード」ではありません。ドイツ語・フランス語・スペイン語・ポルトガル語は未確認です。",
+          "translations": [
+            { "language": "Japanese", "text": "マウス操作", "status": "official", "variants": [], "avoid": ["マウスモード"] },
+            { "language": "English", "text": "mouse controls", "status": "official", "variants": [], "avoid": ["mouse mode", "Mouse mode", "Mouse Mode"] },
+            { "language": "Korean", "text": "마우스 조작", "status": "official", "variants": [], "avoid": ["마우스 모드"] },
+            { "language": "ChineseTraditional", "text": "滑鼠操作", "status": "official", "variants": [], "avoid": ["滑鼠模式"] },
+            { "language": "ChineseSimplified", "text": "鼠标操作", "status": "reference", "variants": [], "avoid": ["鼠标模式"] }
+          ]
+        },
+        {
+          "id": "gamechat",
+          "category": "feature",
+          "notes": "本体の機能名。英語・欧州の言語では1語の「GameChat」です。",
+          "translations": [
+            { "language": "Japanese", "text": "ゲームチャット", "status": "official", "variants": [], "avoid": [] },
+            { "language": "English", "text": "GameChat", "status": "official", "variants": [], "avoid": ["Game Chat"] },
+            { "language": "German", "text": "GameChat", "status": "official", "variants": [], "avoid": ["Game Chat"] },
+            { "language": "French", "text": "GameChat", "status": "official", "variants": [], "avoid": ["Game Chat"] },
+            { "language": "Spanish", "text": "GameChat", "status": "official", "variants": [], "avoid": ["Game Chat"] },
+            { "language": "Portuguese", "text": "GameChat", "status": "official", "variants": [], "avoid": ["Game Chat"] },
+            { "language": "Korean", "text": "게임챗", "status": "official", "variants": [], "avoid": ["게임 챗"] },
+            { "language": "ChineseTraditional", "text": "遊戲聊天", "status": "official", "variants": [], "avoid": [] },
+            { "language": "ChineseSimplified", "text": "游戏聊天", "status": "reference", "variants": [], "avoid": [] }
+          ]
+        }
+      ]
+    }
+  ]
+}

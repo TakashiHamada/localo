@@ -90,7 +90,7 @@ namespace Localo.Tests
                 var exported = JsonUtility.FromJson<ProjectExport>(
                     LocaloTranslationContext.ExportRowToString(_table, "HELLO", _settings));
 
-                Assert.That(exported.schemaVersion, Is.EqualTo(5));
+                Assert.That(exported.schemaVersion, Is.EqualTo(6));
                 Assert.That(exported.tables, Has.Count.EqualTo(1));
                 Assert.That(exported.tables[0].translatorLanguages, Is.EqualTo(new[] { "French" }));
                 Assert.That(exported.translatorExamples, Has.Count.EqualTo(1));
@@ -123,7 +123,7 @@ namespace Localo.Tests
                 : LocaloTranslationContext.ExportToString(_settings);
             var exported = JsonUtility.FromJson<ProjectExport>(json);
 
-            Assert.That(exported.schemaVersion, Is.EqualTo(5));
+            Assert.That(exported.schemaVersion, Is.EqualTo(6));
             Assert.That(exported.languageGuidelines.commonPoints, Is.EqualTo(preview.commonPoints));
             Assert.That(exported.languageGuidelines.reviewedOn, Is.EqualTo(preview.reviewedOn));
             Assert.That(exported.languageGuidelines.languages.ConvertAll(guide => guide.language),
@@ -134,6 +134,52 @@ namespace Localo.Tests
             Assert.That(korean.sources, Is.Not.Empty);
             Assert.That(_row.comment, Is.EqualTo("人間のメモを保持"));
             Assert.That(_table.translationInstructions, Is.EqualTo("ウイリスのセリフ。軽い口調。"));
+        }
+
+        [Test]
+        public void Export_IncludesProjectProfileWithGuidanceAndKanjiRangeOnlyForJapanese()
+        {
+            _settings.projectProfile = new LocaloProjectProfile
+            {
+                audience = "lower-elementary",
+                genres = new List<string> { "puzzle" },
+                tones = new List<string> { "cute", "gentle" }
+            };
+
+            var withoutJapanese = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportToString(_settings));
+            Assert.That(withoutJapanese.projectProfile.audience.id, Is.EqualTo("lower-elementary"));
+            Assert.That(withoutJapanese.projectProfile.audience.guidance, Is.Not.Empty);
+            Assert.That(withoutJapanese.projectProfile.genres.ConvertAll(option => option.id), Is.EqualTo(new[] { "puzzle" }));
+            // 保存順ではなく、選択肢の並び順で出す。
+            Assert.That(withoutJapanese.projectProfile.tones.ConvertAll(option => option.id), Is.EqualTo(new[] { "gentle", "cute" }));
+            Assert.That(withoutJapanese.projectProfile.japaneseKanjiRange?.id, Is.Null.Or.Empty);
+
+            _settings.enabledLanguages.Add(SystemLanguage.Japanese);
+            var automatic = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportToString(_settings));
+            Assert.That(automatic.projectProfile.japaneseKanjiRange.id, Is.EqualTo("grade2"));
+
+            _settings.projectProfile.kanjiRange = "joyo";
+            var overridden = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportToString(_settings));
+            Assert.That(overridden.projectProfile.japaneseKanjiRange.id, Is.EqualTo("joyo"));
+        }
+
+        [Test]
+        public void Export_IncludesSelectedPlatformTermsForEnabledLanguagesOnly()
+        {
+            var none = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportToString(_settings));
+            Assert.That(none.platformTerms?.platforms, Is.Null.Or.Empty);
+
+            _settings.enabledLanguages.Add(SystemLanguage.Japanese);
+            _settings.targetPlatforms.Add("switch2");
+            var exported = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportToString(_settings));
+
+            Assert.That(exported.platformTerms.platforms, Has.Count.EqualTo(1));
+            PlatformExport platform = exported.platformTerms.platforms[0];
+            Assert.That(platform.id, Is.EqualTo("switch2"));
+            TermExport mouse = platform.terms.Find(term => term.id == "mouse-controls");
+            Assert.That(mouse.translations.ConvertAll(text => text.language), Is.EquivalentTo(new[] { "English", "Japanese" }));
+            Assert.That(mouse.translations.Find(text => text.language == "Japanese").text, Is.EqualTo("マウス操作"));
+            Assert.That(mouse.translations.Find(text => text.language == "Japanese").avoid, Does.Contain("マウスモード"));
         }
 
         [Test]
@@ -159,9 +205,9 @@ namespace Localo.Tests
             Func<LocalizationTable, string, LocalizationSettings, string> exportRow =
                 LocaloTranslationContext.ExportRowToString;
 
-            Assert.That(JsonUtility.FromJson<ProjectExport>(export(_settings)).schemaVersion, Is.EqualTo(5));
+            Assert.That(JsonUtility.FromJson<ProjectExport>(export(_settings)).schemaVersion, Is.EqualTo(6));
             Assert.That(JsonUtility.FromJson<ProjectExport>(exportRow(_table, "HELLO", _settings)).schemaVersion,
-                Is.EqualTo(5));
+                Is.EqualTo(6));
         }
 
         [Test]
@@ -313,6 +359,8 @@ namespace Localo.Tests
             public int schemaVersion;
             public string sourceLanguage;
             public GuidelinesExport languageGuidelines;
+            public ProfileExport projectProfile;
+            public PlatformTermsExport platformTerms;
             public List<GlossaryExport> glossary;
             public List<TableExport> translatorExamples;
             public List<TableExport> tables;
@@ -353,6 +401,39 @@ namespace Localo.Tests
             public string aiScene;
             public string aiDisplaySpace;
             public List<TextExport> translations;
+        }
+        [Serializable] private sealed class ProfileExport
+        {
+            public OptionExport audience;
+            public List<OptionExport> genres;
+            public List<OptionExport> tones;
+            public OptionExport japaneseKanjiRange;
+        }
+        [Serializable] private sealed class OptionExport
+        {
+            public string id;
+            public string label;
+            public string guidance;
+        }
+        [Serializable] private sealed class PlatformTermsExport
+        {
+            public List<PlatformExport> platforms;
+        }
+        [Serializable] private sealed class PlatformExport
+        {
+            public string id;
+            public List<TermExport> terms;
+        }
+        [Serializable] private sealed class TermExport
+        {
+            public string id;
+            public List<TermTextExport> translations;
+        }
+        [Serializable] private sealed class TermTextExport
+        {
+            public string language;
+            public string text;
+            public List<string> avoid;
         }
         [Serializable] private sealed class TextExport
         {
