@@ -127,6 +127,12 @@ namespace Localo.Runtime
         [Tooltip("AIが調査した器。表示する部品、幅・行数・フォントサイズ・自動縮小、表示時間などを、根拠とともに記録します。")]
         [TextArea(4, 16)]
         public string aiDisplaySpace = string.Empty;
+
+        [Tooltip("AIが調査したグループ名。続けて表示される1つの会話や、1つの画面の問いと答えをまとめます。登録された全シートで共通です。空ならグループに属しません。")]
+        public string aiGroup = string.Empty;
+
+        [Tooltip("グループの中で表示される位置。番号と分岐の英字をハイフンで交互につなぎます（1、2、2-A、2-A-1、2-B、3）。")]
+        public string aiGroupStep = string.Empty;
     }
 
     /// <summary>

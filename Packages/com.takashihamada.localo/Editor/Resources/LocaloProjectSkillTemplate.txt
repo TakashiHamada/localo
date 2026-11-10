@@ -24,7 +24,7 @@ Treat `Packages/com.takashihamada.localo/` as the installed tool and `Assets/Loc
 - Resolution is requested language, then English. Missing keys return the key; an explicitly blank base translation stays blank.
 - Store intentional line breaks as `<br>`.
 - 各行の `comment`（コメント欄）は人間が書くメモ。AIは翻訳の参考として読むだけにし、新規作成・追記・変更・削除・自動補完を行わない。空欄もそのまま残す。
-- AIが調査した行の文脈は、コメント欄に書かない。行の `aiScene`（場面）と `aiDisplaySpace`（器）に保存する。人間のメモと調査結果を自動で移動・統合しない。
+- AIが調査した行の文脈は、コメント欄に書かない。行の `aiScene`（場面）、`aiDisplaySpace`（器）、`aiGroup`・`aiGroupStep`（グループと位置）に保存する。人間のメモと調査結果を自動で移動・統合しない。
 
 ## 翻訳の文脈と用語集
 
@@ -32,18 +32,20 @@ Treat `Packages/com.takashihamada.localo/` as the installed tool and `Assets/Loc
 
 - シート：「Translation」タブの `LocalizationTable.textType`（文章の種類）と `translationInstructions`（話者・性格・口調などシートの声を含む自由記述の翻訳方針）。シートは文章の種類と声の単位であり、1つのシートに複数の話者を混ぜない。話者や基本の口調が変わる文章を見つけたら、シートを分けるよう人間に提案する。AIはシートの設定を変更しない。
 - 行：`LocalizationRow.aiScene`（場面：どこで、何がきっかけで、誰に向けて表示されるか）と `aiDisplaySpace`（器：表示する部品・幅・行数・フォントサイズ・自動縮小・表示時間）。どちらもAIがキーをもとに調査して書き、人間は確認だけ行う。
+- グループ：`LocalizationRow.aiGroup`（グループ名）と `aiGroupStep`（グループの中の位置）。続けて表示される行のまとまり（1つの会話、1つの画面の問いと答え）を表す。グループ名は登録された全シートで共通で、別のシートの行も同じグループに入れられる。位置は番号と分岐の英字をハイフンで交互につなぐ（`1`、`2`、`2-A`／`2-B` は2に対する選択肢、`2-A-1` はAを選んだ後の続き、`3` は合流後）。AIが下の手順で調査して書き、人間はDetailsで確認・修正する。
 - 共通用語集は `LocalizationSettings.glossary` に保存される。GlossaryタブはTableと同じ表形式で、Source Term・各言語の正式表記・Notesを編集する。Source TermはSetupのSource Languageで選んだ言語で書く用語・行の識別名であり、実際の正式表記は各言語の列に保存する。右端の×で行を削除できる。
 - 翻訳前にコンテキストJSONの `glossary` 全体を必ず読み、Notesにある意味・使い方を確認し、対象言語の正式表記を優先する。行単位の翻訳でも同じ手順とする。翻訳後は該当する登録用語が守られているか確認する。人間の指示・確定訳と矛盾したら勝手に決めず報告する。
-- 翻訳前に `Localo.Editor.LocaloTranslationContext.ExportToString()`、または `ExportRowToString(table, key)` を呼ぶ。文章の種類・方針・用語集・翻訳文・人間のコメント・場面・器が区別されたJSONを読み、翻訳に反映する。場面や器が空・不明なら、下の手順で調査する。
-- 場面と器は `LocaloTranslationContext.SetRowContext(table, key, scene, displaySpace)` で保存する。`null` を渡した項目は変更しない。このAPIはコメント欄・翻訳文・シートの設定を変更しない。旧APIの `SetResearch` は使わない。人間はTableの行ごとのCommentの右にある詳細アイコンから場面と器を確認・修正できる。
+- 翻訳前に `Localo.Editor.LocaloTranslationContext.ExportToString()`、または `ExportRowToString(table, key)` を呼ぶ。文章の種類・方針・用語集・翻訳文・人間のコメント・グループ・場面・器が区別されたJSONを読み、翻訳に反映する。場面や器が空・不明なら、下の手順で調査する。
+- グループに属する行は、`ExportGroupToString(group)` でグループごとに取り出して訳す。JSONの `groups` にグループの行が表示される順に並び、各行の `aiGroup`・`aiGroupStep` で位置がわかる。前後の行の流れ、問いと答えの対応（言い回し・敬語・呼称）を保って訳す。`ExportRowToString` は、行がグループに属していればグループの全行を含め、`focusKey` に対象のキーを入れる。`focusKey` の行だけを訳し、ほかの行は文脈として読むだけにする。
+- 場面と器は `LocaloTranslationContext.SetRowContext(table, key, scene, displaySpace)` で保存する。`null` を渡した項目は変更しない。このAPIはコメント欄・翻訳文・シートの設定を変更しない。旧APIの `SetResearch` は使わない。人間はTableの行ごとのCommentの右にある詳細アイコンからグループ・場面・器を確認・修正できる。
 
 ### 言語別ガイドとシートの口調
 
-- コンテキストJSONはschema version 6。ルートの`sourceLanguage`の言語を原文とし、他の言語へ翻訳する。原文が空欄なら他言語から推測せず報告する。翻訳元の文章を翻訳先として上書きしない。`languageGuidelines.commonPoints`と翻訳先に対応する`languageGuidelines.languages`を翻訳前に読む。`locale`・`region`・`points`・`notes`と出典を参照する。TranslationタブのLanguage Guidelinesも同じ資料を表示する。
+- コンテキストJSONはschema version 7。ルートの`sourceLanguage`の言語を原文とし、他の言語へ翻訳する。原文が空欄なら他言語から推測せず報告する。翻訳元の文章を翻訳先として上書きしない。`languageGuidelines.commonPoints`と翻訳先に対応する`languageGuidelines.languages`を翻訳前に読む。`locale`・`region`・`points`・`notes`と出典を参照する。TranslationタブのLanguage Guidelinesも同じ資料を表示する。
 - 既定はen-US・ko-KR・zh-CN・zh-TW・de-DE・fr-FR・es-419・pt-BR。人間の地域・口調の指定、用語集、翻訳者の確定訳を優先し、一般的なガイドで上書きしない。
 - 翻訳前にシート全体の原文と既存訳を読み、対象言語ごとの口調方針を決める。人間のシート方針、用語集、同じシートの翻訳者の確定訳を優先し、未指定なら話者・相手・場面から敬語・呼称・語尾などを推定する。人間の翻訳方針の欄を推定結果で書き換えない。
 - 同じ話者と相手の関係では口調を揃える。例えば韓国語の합니다体・해요体・반말は関係と場面で使い分け、相手によって変わる敬語や、感情・関係の変化に伴う意図的な切替を一律に揃えない。別シートの訳から話者の口調を無条件に流用しない。
-- 対象シート全体が未確認なら`ExportToString()`で取得し、口調方針を決める。全体の確認後は行単位のJSONも使える。推定した言語別の口調方針を作業報告に添える。既存訳との矛盾や関係性の不明点は、調べても解決できなければKey・言語・理由を添えて人間に報告する。
+- 対象シート全体が未確認なら`ExportToString()`で取得し、口調方針を決める。全体の確認後は行単位・グループ単位のJSONも使える。推定した言語別の口調方針を作業報告に添える。既存訳との矛盾や関係性の不明点は、調べても解決できなければKey・言語・理由を添えて人間に報告する。
 - `ExportToString(targetLanguages: new[] { SystemLanguage.Korean })`のように、ガイドだけを有効な対象言語に絞れる。`ExportRowToString`も同じ引数を持つ。原文・用語集・お手本の言語はこの引数で削除されない。引数を省略すると有効な全言語のガイドを含む。日本語は今回の言語別ガイドの対象外。
 
 ### 作品プロファイルと機種の公式表記
@@ -65,6 +67,19 @@ Treat `Packages/com.takashihamada.localo/` as the installed tool and `Assets/Loc
 4. 器を調べる：表示に使う部品、RectTransformのサイズ、フォントサイズ、Auto Size、折り返し・Overflowの設定、想定される行数、表示時間（自動で消える表示や字幕など）。
 5. 確認できた事実と推測を区別し、根拠（アセットのパス、コードの箇所）を添える。確認できないことは不明と書く。使用箇所が複数あれば、それぞれを書く。
 6. `SetRowContext` で保存し、調査したキーと要点を作業報告に書く。
+
+### 行のグループ分けの調査手順
+
+人間がシートやプロジェクト全体のグループ分けを依頼したときに使う。
+
+1. `ExportToString()` で全行と既存の `groups` を読む。
+2. 続けて表示される文章を探す。会話のデータやコード（キーの配列・リスト、会話を進める処理、タイムライン）、同じプレハブや画面で順に表示されるUI（確認ダイアログの問いとボタン、質問と答え）、選択肢の分岐を調べる。キーの使用箇所は「場面と器」の手順2と同じ方法で探す。
+3. グループ名を付ける。内容がわかる短い名前にし、既存のグループ名は理由なく変えない。位置は書式に従って付ける。
+   - 1グループは、場面が変わるまでの1つの会話、または1つの画面の問いと答えにとどめる。章全体のような長い流れはグループにせず、場面（`aiScene`）に書く。
+   - 1つの行が属せるグループは1つだけ。複数の流れで使い回すキー（共通のボタンや返事など）はグループに入れず、作業報告に挙げる。
+4. 確認できたものだけを登録する。根拠のない推測でグループにしない。不確かなものと、根拠（アセットのパス、コードの箇所）は作業報告に書く。
+5. `LocaloTranslationContext.SetRowGroups(new[] { new LocaloRowGroupAssignment(key, group, step), ... })` でまとめて保存する。1件でもキーが無い・位置の書式が違うと、何も保存されない。グループ名と位置を両方空にすると、その行をグループから外す。このAPIはコメント欄・翻訳文・場面・器・シートの設定を変更しない。
+6. `LocaloQa.RunAll()` を実行し、`groups` の指摘（片方だけの入力、書式違い、位置の重なり、1行だけのグループ）を直すか報告する。
 
 ## 翻訳の長さと文脈
 

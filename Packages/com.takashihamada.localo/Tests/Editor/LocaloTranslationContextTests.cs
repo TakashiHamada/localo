@@ -354,9 +354,228 @@ namespace Localo.Tests
             }
         }
 
+        // ---- 行のグループ ---------------------------------------------------------
+
+        [Test]
+        public void CompareSteps_OrdersNumbersNumericallyAndBranchesDepthFirst()
+        {
+            var steps = new List<string> { "3", "2-B", "10", "2-A-1", "2", "2-a-2", "1" };
+            steps.Sort(LocaloGroups.CompareSteps);
+            Assert.That(steps, Is.EqualTo(new[] { "1", "2", "2-A-1", "2-a-2", "2-B", "3", "10" }));
+
+            Assert.That(LocaloGroups.CompareSteps("2", "2-A"), Is.LessThan(0));
+            Assert.That(LocaloGroups.CompareSteps("2-A", "2-A-1"), Is.LessThan(0));
+            Assert.That(LocaloGroups.CompareSteps("02", "2"), Is.EqualTo(0));
+            Assert.That(LocaloGroups.CompareSteps("bad", "1"), Is.GreaterThan(0));
+        }
+
+        [TestCase("1", true)]
+        [TestCase("12", true)]
+        [TestCase("2-A", true)]
+        [TestCase("2-A-1", true)]
+        [TestCase("2-A-1-B", true)]
+        [TestCase("2-1-1", false)]
+        [TestCase("2-A-B", false)]
+        [TestCase("A", false)]
+        [TestCase("2-", false)]
+        [TestCase(" 2 ", true)]
+        [TestCase("２", false)]
+        [TestCase("", false)]
+        [TestCase(null, false)]
+        public void IsValidStep_AcceptsAlternatingNumbersAndBranchLetters(string step, bool expected)
+        {
+            Assert.That(LocaloGroups.IsValidStep(step), Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void ExportGroup_ReturnsRowsAcrossSheetsInStepOrder()
+        {
+            var answers = CreateAnswerTable();
+            try
+            {
+                var json = LocaloTranslationContext.ExportGroupToString("confirm", _settings);
+                var exported = JsonUtility.FromJson<ProjectExport>(json);
+
+                Assert.That(exported.schemaVersion, Is.EqualTo(7));
+                Assert.That(exported.focusKey, Is.Empty);
+                Assert.That(exported.groups, Has.Count.EqualTo(1));
+                Assert.That(exported.groups[0].name, Is.EqualTo("confirm"));
+                Assert.That(exported.groups[0].members.ConvertAll(member => member.key),
+                    Is.EqualTo(new[] { "HELLO", "QUESTION", "YES", "NO" }));
+                Assert.That(exported.groups[0].members.ConvertAll(member => member.step),
+                    Is.EqualTo(new[] { "1", "2", "2-A", "2-B" }));
+                Assert.That(exported.tables, Has.Count.EqualTo(2));
+                Assert.That(exported.tables[0].rows.ConvertAll(row => row.key), Is.EqualTo(new[] { "HELLO", "QUESTION" }));
+                Assert.That(exported.tables[1].textType, Is.EqualTo("Interface"));
+                Assert.That(exported.tables[1].rows.ConvertAll(row => row.key), Is.EqualTo(new[] { "YES", "NO" }));
+                Assert.That(exported.tables[1].rows[0].aiGroup, Is.EqualTo("confirm"));
+                Assert.That(exported.tables[1].rows[0].aiGroupStep, Is.EqualTo("2-A"));
+                Assert.Throws<ArgumentException>(() => LocaloTranslationContext.ExportGroupToString("missing", _settings));
+            }
+            finally { Object.DestroyImmediate(answers); }
+        }
+
+        [Test]
+        public void ExportRow_IncludesWholeGroupAndFocusKey_OnlyWhenRowHasGroup()
+        {
+            var answers = CreateAnswerTable();
+            try
+            {
+                var grouped = JsonUtility.FromJson<ProjectExport>(
+                    LocaloTranslationContext.ExportRowToString(answers, "YES", _settings));
+                Assert.That(grouped.focusKey, Is.EqualTo("YES"));
+                Assert.That(grouped.groups, Has.Count.EqualTo(1));
+                Assert.That(grouped.tables, Has.Count.EqualTo(2));
+                Assert.That(grouped.tables[0].rows.ConvertAll(row => row.key), Is.EqualTo(new[] { "HELLO", "QUESTION" }));
+
+                var single = JsonUtility.FromJson<ProjectExport>(
+                    LocaloTranslationContext.ExportRowToString(_table, "UNGROUPED", _settings));
+                Assert.That(single.focusKey, Is.EqualTo("UNGROUPED"));
+                Assert.That(single.groups, Is.Empty);
+                Assert.That(single.tables, Has.Count.EqualTo(1));
+                Assert.That(single.tables[0].rows, Has.Count.EqualTo(1));
+                Assert.That(single.tables[0].rows[0].key, Is.EqualTo("UNGROUPED"));
+            }
+            finally { Object.DestroyImmediate(answers); }
+        }
+
+        [Test]
+        public void ExportAll_ListsEveryGroupAndLeavesFocusKeyEmpty()
+        {
+            var answers = CreateAnswerTable();
+            try
+            {
+                var exported = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportToString(_settings));
+                Assert.That(exported.focusKey, Is.Empty);
+                Assert.That(exported.groups, Has.Count.EqualTo(1));
+                Assert.That(exported.groups[0].members, Has.Count.EqualTo(4));
+                Assert.That(exported.tables[0].rows, Has.Count.EqualTo(3));
+            }
+            finally { Object.DestroyImmediate(answers); }
+        }
+
+        [Test]
+        public void SetRowGroups_SavesAndClearsAcrossSheets_WithoutTouchingOtherFields()
+        {
+            var answers = CreateAnswerTable();
+            try
+            {
+                LocaloTranslationContext.SetRowGroups(new[]
+                {
+                    new LocaloRowGroupAssignment("UNGROUPED", " intro ", "1"),
+                    new LocaloRowGroupAssignment("YES", string.Empty, string.Empty)
+                }, _settings);
+
+                LocalizationRow ungrouped = _table.rows.Find(row => row.key == "UNGROUPED");
+                Assert.That(ungrouped.aiGroup, Is.EqualTo("intro"));
+                Assert.That(ungrouped.aiGroupStep, Is.EqualTo("1"));
+                Assert.That(answers.rows[0].aiGroup, Is.Empty);
+                Assert.That(answers.rows[0].aiGroupStep, Is.Empty);
+                Assert.That(_row.comment, Is.EqualTo("人間のメモを保持"));
+                Assert.That(_row.aiScene, Is.EqualTo("Aボタンを押すまで表示。"));
+                Assert.That(_row.aiDisplaySpace, Is.EqualTo("会話ウィンドウ、2行。"));
+                Assert.That(_table.GetText(_row, SystemLanguage.Japanese), Is.EqualTo("やあ！"));
+            }
+            finally
+            {
+                Undo.ClearUndo(answers);
+                Object.DestroyImmediate(answers);
+            }
+        }
+
+        [Test]
+        public void SetRowGroups_WritesNothing_WhenAnyAssignmentIsInvalid()
+        {
+            var answers = CreateAnswerTable();
+            try
+            {
+                Assert.Throws<ArgumentException>(() => LocaloTranslationContext.SetRowGroups(new[]
+                {
+                    new LocaloRowGroupAssignment("UNGROUPED", "intro", "1"),
+                    new LocaloRowGroupAssignment("MISSING", "intro", "2")
+                }, _settings));
+                Assert.Throws<ArgumentException>(() => LocaloTranslationContext.SetRowGroups(new[]
+                {
+                    new LocaloRowGroupAssignment("UNGROUPED", "intro", "1"),
+                    new LocaloRowGroupAssignment("YES", "confirm", "2-1-1")
+                }, _settings));
+                Assert.Throws<ArgumentException>(() => LocaloTranslationContext.SetRowGroups(new[]
+                {
+                    new LocaloRowGroupAssignment("UNGROUPED", "intro", string.Empty)
+                }, _settings));
+
+                Assert.That(_table.rows.Find(row => row.key == "UNGROUPED").aiGroup, Is.Empty);
+                Assert.That(answers.rows[0].aiGroupStep, Is.EqualTo("2-A"));
+            }
+            finally { Object.DestroyImmediate(answers); }
+        }
+
+        [Test]
+        public void ExportGroup_KeepsSheetRegistrationOrder_WhenFirstStepIsInLaterSheet()
+        {
+            var answers = CreateAnswerTable();
+            try
+            {
+                _row.aiGroupStep = "3";
+                answers.rows[0].aiGroupStep = " 1 ";
+                var exported = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportGroupToString("confirm", _settings));
+
+                Assert.That(exported.groups[0].members.ConvertAll(member => member.key),
+                    Is.EqualTo(new[] { "YES", "QUESTION", "NO", "HELLO" }));
+                Assert.That(exported.groups[0].members[0].step, Is.EqualTo("1"));
+                Assert.That(exported.tables.ConvertAll(table => table.textType), Is.EqualTo(new[] { "Dialogue", "Interface" }));
+                Assert.That(exported.tables[1].rows[0].aiGroupStep, Is.EqualTo("1"));
+            }
+            finally { Object.DestroyImmediate(answers); }
+        }
+
+        [Test]
+        public void SetRowGroups_RejectsRepeatedKeyAndNullAssignment()
+        {
+            var answers = CreateAnswerTable();
+            try
+            {
+                Assert.Throws<ArgumentException>(() => LocaloTranslationContext.SetRowGroups(new[]
+                {
+                    new LocaloRowGroupAssignment("UNGROUPED", "intro", "1"),
+                    new LocaloRowGroupAssignment("UNGROUPED", "intro", "2")
+                }, _settings));
+                Assert.Throws<ArgumentException>(() => LocaloTranslationContext.SetRowGroups(new[]
+                {
+                    new LocaloRowGroupAssignment("UNGROUPED", "intro", "1"),
+                    null
+                }, _settings));
+                Assert.Throws<ArgumentNullException>(() => LocaloTranslationContext.SetRowGroups(null, _settings));
+
+                Assert.That(_table.rows.Find(row => row.key == "UNGROUPED").aiGroup, Is.Empty);
+            }
+            finally { Object.DestroyImmediate(answers); }
+        }
+
+        // HELLO(1)・QUESTION(2) を Dialogue シートに、YES(2-A)・NO(2-B) を別の Interface シートに置き、
+        // グループ「confirm」にする。Dialogue シートにはグループの無い UNGROUPED も置く。
+        // 登録の順とシートの中の順を、位置の順とわざと変えておく。
+        private LocalizationTable CreateAnswerTable()
+        {
+            var answers = ScriptableObject.CreateInstance<LocalizationTable>();
+            answers.name = "Answers";
+            answers.textType = LocaloTextType.Interface;
+            answers.rows.Add(new LocalizationRow { key = "YES", aiGroup = "confirm", aiGroupStep = "2-A" });
+            answers.rows.Add(new LocalizationRow { key = "NO", aiGroup = "confirm", aiGroupStep = "2-B" });
+            _settings.registeredTables.Add(new TableInfo { tableAsset = answers });
+
+            _table.rows.Insert(0, new LocalizationRow { key = "QUESTION", aiGroup = "confirm", aiGroupStep = "2" });
+            _table.rows.Add(new LocalizationRow { key = "UNGROUPED" });
+            _row.aiGroup = "confirm";
+            _row.aiGroupStep = "1";
+            return answers;
+        }
+
         [Serializable] private sealed class ProjectExport
         {
             public int schemaVersion;
+            public string focusKey;
+            public List<GroupExport> groups;
             public string sourceLanguage;
             public GuidelinesExport languageGuidelines;
             public ProfileExport projectProfile;
@@ -400,7 +619,19 @@ namespace Localo.Tests
             public string humanComment;
             public string aiScene;
             public string aiDisplaySpace;
+            public string aiGroup;
+            public string aiGroupStep;
             public List<TextExport> translations;
+        }
+        [Serializable] private sealed class GroupExport
+        {
+            public string name;
+            public List<GroupMemberExport> members;
+        }
+        [Serializable] private sealed class GroupMemberExport
+        {
+            public string step;
+            public string key;
         }
         [Serializable] private sealed class ProfileExport
         {

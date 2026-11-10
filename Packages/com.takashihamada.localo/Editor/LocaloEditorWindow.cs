@@ -100,6 +100,21 @@ namespace Localo.Editor
         // duplicate key stays visibly red whether or not the cell is currently selected.
         private static readonly Color DuplicateKeyBackground = new Color(0.85f, 0.15f, 0.15f, 0.45f);
 
+        // 同じグループの行に重ねる薄い色。選択色（オレンジ）と重複キー（赤）と見分けやすい色相だけを使う。
+        // シートの上から現れた順に割り当てるので、行が連続したグループどうしは隣で違う色になる。色を足すと繰り返しが減る。
+        private static readonly Color[] GroupRowBackgrounds =
+        {
+            new Color(0.30f, 0.55f, 0.95f, 0.22f), // 青
+            new Color(0.30f, 0.75f, 0.35f, 0.24f), // 緑
+            new Color(0.60f, 0.40f, 0.90f, 0.22f), // 紫
+            new Color(0.15f, 0.70f, 0.75f, 0.24f), // 青緑
+            new Color(0.65f, 0.75f, 0.15f, 0.26f), // 黄緑
+            new Color(0.85f, 0.40f, 0.80f, 0.20f)  // 赤紫
+        };
+        // 表示中のシートの行ごとの色の番号（GroupRowBackgrounds の添字）。グループの無い行は NoGroupColor。
+        private int[] _groupColorIndexByRow = System.Array.Empty<int>();
+        private const int NoGroupColor = -1;
+
         // Header background colors, grouped by column role (Key / language / Comment) rather than
         // per-language, so the grouping stays legible regardless of how many languages are enabled.
         private static readonly Color KeyHeaderBackground = new Color(0.55f, 0.35f, 0.75f, 0.35f);
@@ -236,6 +251,36 @@ namespace Localo.Editor
         {
             _duplicateKeysDirty = true;
             Repaint();
+        }
+
+        /// <summary>
+        /// 別のウィンドウ（Localo Details）で行を消す直前に呼ぶ。同じシートを開いているTableで、
+        /// 編集中の文字を元の行に確定し、選択中の行が消える行より下なら1行上へずらして、同じ行を指し続けるようにする。
+        /// 行番号がずれた後に確定すると、編集中の文字が別の行に書き込まれてしまうため、必ず消す前に呼ぶ。
+        /// </summary>
+        internal static void PrepareForExternalRowRemoval(LocalizationTable table, int removedRealRow)
+        {
+            foreach (LocaloEditorWindow window in Resources.FindObjectsOfTypeAll<LocaloEditorWindow>())
+            {
+                if (window.IsGlossaryGrid || window._table != table) continue;
+                if (window._mode == EditorMode.Insert) window.CommitInsertAndReturnToNormal();
+                int selectedRealRow = window._pendingSelectRealRow >= 0
+                    ? window._pendingSelectRealRow
+                    : window.GetSelectedRealRowIndex();
+                if (selectedRealRow > removedRealRow) window._pendingSelectRealRow = selectedRealRow - 1;
+                // 範囲選択の基点もずれるため、選択を1セルに戻す（見た目と違う範囲を dd などで操作しないように）。
+                window._collapseSelectionOnResolve = true;
+            }
+        }
+
+        /// <summary>
+        /// 別のウィンドウ（Localo Details）で行を削除した後に呼ぶ。開いているTableに、重複キーの再計算と再描画を促す。
+        /// 表示する行の一覧と選択位置は、次のLayoutで作り直され、範囲内に収められる。
+        /// </summary>
+        internal static void NotifyRowsChangedExternally()
+        {
+            foreach (LocaloEditorWindow window in Resources.FindObjectsOfTypeAll<LocaloEditorWindow>())
+                window.MarkDuplicateKeysDirty();
         }
 
         private void OnLostFocus()

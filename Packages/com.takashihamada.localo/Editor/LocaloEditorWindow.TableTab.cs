@@ -122,6 +122,7 @@ namespace Localo.Editor
             {
                 RecomputeFilteredIndices();
                 if (!IsGlossaryGrid && _duplicateKeysDirty) RecomputeDuplicateKeys();
+                if (!IsGlossaryGrid) RecomputeGroupColors();
                 ResolvePendingSelectionAndClamp();
             }
 
@@ -406,6 +407,45 @@ namespace Localo.Editor
             DrawCellBorder(rect);
         }
 
+        /// <summary>
+        /// 表示中のシートで、行ごとのグループの色の番号を決め直す（Layoutのたびに呼ぶ）。
+        /// シートの上から、グループが最初に現れた順に色を割り当てる。各グループの行が連続して並んでいれば、
+        /// 続けて並ぶ別々のグループは違う色になる。色の数より多いグループがあると、離れたグループで色が繰り返される。
+        /// 検索で行を絞っても色は変わらない。Detailsウィンドウでの変更も次の描画で反映される。
+        /// </summary>
+        private void RecomputeGroupColors()
+        {
+            var colorIndexByGroup = new Dictionary<string, int>(System.StringComparer.Ordinal);
+            int rowCount = _table?.rows?.Count ?? 0;
+            if (_groupColorIndexByRow.Length != rowCount) _groupColorIndexByRow = new int[rowCount];
+            for (int i = 0; i < rowCount; i++)
+            {
+                string name = LocaloGroups.GroupNameOf(_table.rows[i]);
+                if (name.Length == 0)
+                {
+                    _groupColorIndexByRow[i] = NoGroupColor;
+                    continue;
+                }
+                if (!colorIndexByGroup.TryGetValue(name, out int colorIndex))
+                {
+                    colorIndex = colorIndexByGroup.Count % GroupRowBackgrounds.Length;
+                    colorIndexByGroup.Add(name, colorIndex);
+                }
+                _groupColorIndexByRow[i] = colorIndex;
+            }
+        }
+
+        /// <summary>行がグループに属していれば、そのグループの色を返す。セルごとに呼ぶため、Layoutで作った表を引くだけにする。</summary>
+        private bool TryGetGroupColor(int realRow, out Color color)
+        {
+            color = default;
+            if (IsGlossaryGrid || realRow < 0 || realRow >= _groupColorIndexByRow.Length) return false;
+            int colorIndex = _groupColorIndexByRow[realRow];
+            if (colorIndex == NoGroupColor) return false;
+            color = GroupRowBackgrounds[colorIndex];
+            return true;
+        }
+
         private void DrawGridRow(int filteredIdx, int realRow)
         {
             bool isEditingThisRow = _mode == EditorMode.Insert && filteredIdx == _selectedRow;
@@ -424,23 +464,26 @@ namespace Localo.Editor
 
                 DrawCell(filteredIdx, realRow, 1 + langCount, ReadCellValue(realRow, 1 + langCount), GetCommentColumnWidth(), rowHeight);
                 if (IsGlossaryGrid) DrawGlossaryRemoveButton(filteredIdx, rowHeight);
-                else DrawRowDetailsButton(filteredIdx, _table.rows[realRow], rowHeight);
+                else DrawRowDetailsButton(filteredIdx, realRow, rowHeight);
             }
         }
 
-        private void DrawRowDetailsButton(int filteredIdx, LocalizationRow row, float rowHeight)
+        private void DrawRowDetailsButton(int filteredIdx, int realRow, float rowHeight)
         {
+            LocalizationRow row = _table.rows[realRow];
             Rect rect = GUILayoutUtility.GetRect(DetailsColumnWidth, rowHeight,
                 GUILayout.Width(DetailsColumnWidth), GUILayout.Height(rowHeight));
             int detailsCol = GetDetailsColumnIndex();
             if (Event.current.type == EventType.Repaint)
             {
-                EditorGUI.DrawRect(rect, IsCellInSelection(filteredIdx, detailsCol)
-                    ? SelectedCellBackground : TableCellBackground);
+                bool selected = IsCellInSelection(filteredIdx, detailsCol);
+                EditorGUI.DrawRect(rect, selected ? SelectedCellBackground : TableCellBackground);
+                if (!selected && TryGetGroupColor(realRow, out Color groupColor)) EditorGUI.DrawRect(rect, groupColor);
                 if (filteredIdx == _selectedRow && _selectedCol == detailsCol)
                     _selectedCellRect = rect;
             }
-            bool hasRowContext = !string.IsNullOrEmpty(row.aiScene) || !string.IsNullOrEmpty(row.aiDisplaySpace);
+            bool hasRowContext = !string.IsNullOrEmpty(row.aiScene) || !string.IsNullOrEmpty(row.aiDisplaySpace)
+                || LocaloGroups.HasGroup(row);
             if (GUI.Button(new Rect(rect.x + 2f, rect.y + 1f, rect.width - 4f, RowHeight - 2f),
                     GetDetailsButtonContent(hasRowContext), EditorStyles.miniButton))
             {
@@ -463,9 +506,9 @@ namespace Localo.Editor
             if (_detailsButtonEmptyContent == null)
             {
                 _detailsButtonEmptyContent = new GUIContent(DetailsButtonLabel,
-                    "AIが調査した場面と器はまだありません。クリック、または選択してEnterで行の詳細を開きます。");
+                    "AIが調査したグループ・場面・器はまだありません。クリック、または選択してEnterで行の詳細を開きます。");
                 _detailsButtonFilledContent = new GUIContent(DetailsButtonLabel,
-                    "クリック、または選択してEnterで、この行の場面と器を確認・修正できます。");
+                    "クリック、または選択してEnterで、この行のグループ・場面・器を確認・修正できます。");
             }
             return hasRowContext ? _detailsButtonFilledContent : _detailsButtonEmptyContent;
         }
@@ -641,6 +684,11 @@ namespace Localo.Editor
             if (inSelection && Event.current.type == EventType.Repaint)
                 EditorGUI.DrawRect(rect, SelectedCellBackground);
 
+            // 同じグループの行を同じ色で薄く塗る。選択中のセルは選択色を優先する。
+            bool hasGroupColor = TryGetGroupColor(realRow, out Color groupColor);
+            if (hasGroupColor && !inSelection && Event.current.type == EventType.Repaint)
+                EditorGUI.DrawRect(rect, groupColor);
+
             // Overlaid last (on top of the normal/selected background) so a duplicate Key cell stays
             // visibly red even while selected. Only the Key column (col 0) participates.
             bool isDuplicateKeyCell = !IsGlossaryGrid && col == 0 && !string.IsNullOrEmpty(displayValue) && _duplicateKeys.Contains(displayValue);
@@ -654,6 +702,11 @@ namespace Localo.Editor
             if (translatorCell) fullDisplayText = TranslatorLockMarker + fullDisplayText;
             _cellContent.text = BuildEllipsizedCellText(fullDisplayText, rect.width, labelStyle);
             _cellContent.tooltip = translatorCell ? TranslatorLockCellTooltip + fullDisplayText : fullDisplayText;
+            if (hasGroupColor && col == 0)
+            {
+                LocalizationRow groupRow = _table.rows[realRow];
+                _cellContent.tooltip += $"\nGroup: {LocaloGroups.GroupNameOf(groupRow)} / Step: {LocaloGroups.StepOf(groupRow)}";
+            }
             EditorGUI.LabelField(rect, _cellContent, labelStyle);
             DrawCellBorder(rect);
 

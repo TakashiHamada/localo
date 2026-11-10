@@ -153,6 +153,7 @@ namespace Localo.Editor
             new LocaloQaPunctuationCheck(),
             new LocaloQaPlatformTermCheck(),
             new LocaloQaKanjiRangeCheck(),
+            new LocaloQaGroupCheck(),
             new LocaloQaLegacyTextCheck(),
             new LocaloQaLineBreakSettingsCheck()
         };

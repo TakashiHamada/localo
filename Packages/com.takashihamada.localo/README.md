@@ -39,10 +39,14 @@ using Localo.Editor;
 
 string allContext = LocaloTranslationContext.ExportToString();
 string rowContext = LocaloTranslationContext.ExportRowToString(table, "MY_KEY");
+string groupContext = LocaloTranslationContext.ExportGroupToString("MY_GROUP");
 LocaloTranslationContext.SetRowContext(table, "MY_KEY", sceneText, displaySpaceText);
+LocaloTranslationContext.SetRowGroups(new[] { new LocaloRowGroupAssignment("MY_KEY", "MY_GROUP", "2-A") });
 ```
 
-場面は `LocalizationRow.aiScene`、器は `LocalizationRow.aiDisplaySpace`、文章の種類は `LocalizationTable.textType`、シートの方針は `LocalizationTable.translationInstructions`、用語集は `LocalizationSettings.glossary` に保存します。`SetRowContext` は `null` を渡した項目を変更しません。変更はUndoに対応します。旧版の `aiResearch` の内容は `aiScene` として読み込まれ、`SetResearch` は場面を保存する互換APIとして残しています。CSVは従来の列構成を維持し、文章の種類・方針・用語集・場面・器の読み出しにはJSON出力APIを使います。場面・器の保存にはSetRowContextを使い、用語集専用の取り込みAPIはありません。JSONのスキーマはversion 6です。
+場面は `LocalizationRow.aiScene`、器は `LocalizationRow.aiDisplaySpace`、文章の種類は `LocalizationTable.textType`、シートの方針は `LocalizationTable.translationInstructions`、用語集は `LocalizationSettings.glossary` に保存します。`SetRowContext` は `null` を渡した項目を変更しません。変更はUndoに対応します。旧版の `aiResearch` の内容は `aiScene` として読み込まれ、`SetResearch` は場面を保存する互換APIとして残しています。CSVは従来の列構成を維持し、文章の種類・方針・用語集・場面・器・グループの読み出しにはJSON出力APIを使います。場面・器の保存にはSetRowContextを使い、用語集専用の取り込みAPIはありません。JSONのスキーマはversion 7です。
+
+続けて表示される行のまとまり（1つの会話、1つの画面の問いと答え）は、グループとして `LocalizationRow.aiGroup`（グループ名）と `aiGroupStep`（位置）に保存します。位置は番号と分岐の英字をハイフンで交互につなぎます（`1`、`2`、`2-A`、`2-A-1`、`2-B`、`3`）。グループ名は登録された全シートで共通です。AIが事前調査で付け、`SetRowGroups` でまとめて保存します。1件でも不正な指定があれば何も保存しません。`ExportGroupToString` はグループの行を書き出します。`tables` はシートごとに分かれるため、読む順は `groups` の `members` を見てください。`ExportRowToString` は、行がグループに属していればグループ全体を含め、対象のキーを `focusKey` で示します。Localo Detailsウィンドウでグループと位置を確認・修正でき、同じグループの行が順に表示されます。Tableでは同じグループの行が同じ色で薄く塗られ、Keyのツールチップにグループと位置が出ます。QAの `groups` は、片方だけの入力、書式違い、位置の重なり、1行だけのグループを知らせます。
 
 ### 言語別ガイドと口調の統一
 

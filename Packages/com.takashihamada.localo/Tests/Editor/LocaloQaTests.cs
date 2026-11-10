@@ -86,6 +86,47 @@ namespace Localo.Tests
         }
 
         [Test]
+        public void GroupCheck_ReportsMissingHalfBadFormatDuplicateAndSingleRowGroup()
+        {
+            var settings = ScriptableObject.CreateInstance<LocalizationSettings>();
+            var table = ScriptableObject.CreateInstance<LocalizationTable>();
+            try
+            {
+                table.name = "QaTable";
+                settings.registeredTables.Add(new TableInfo { tableAsset = table });
+                table.rows.Add(new LocalizationRow { key = "OK1", aiGroup = "talk", aiGroupStep = "1" });
+                table.rows.Add(new LocalizationRow { key = "OK2", aiGroup = "talk", aiGroupStep = "2-A" });
+                table.rows.Add(new LocalizationRow { key = "DUP", aiGroup = "talk", aiGroupStep = "2-A" });
+                table.rows.Add(new LocalizationRow { key = "NO_STEP", aiGroup = "talk" });
+                table.rows.Add(new LocalizationRow { key = "NO_GROUP", aiGroupStep = "3" });
+                table.rows.Add(new LocalizationRow { key = "BAD", aiGroup = "talk", aiGroupStep = "2-1-1" });
+                table.rows.Add(new LocalizationRow { key = "ALONE", aiGroup = "typo", aiGroupStep = "1" });
+                table.rows.Add(new LocalizationRow { key = "CASE1", aiGroup = "choice", aiGroupStep = "1-B" });
+                table.rows.Add(new LocalizationRow { key = "CASE2", aiGroup = "choice ", aiGroupStep = " 1-b" });
+                table.rows.Add(new LocalizationRow { key = "SPACED", aiGroup = "choice", aiGroupStep = " 2 " });
+                table.rows.Add(new LocalizationRow { key = "WIDE", aiGroup = "choice", aiGroupStep = "３" });
+                table.rows.Add(new LocalizationRow { key = "PLAIN" });
+
+                IReadOnlyList<LocaloQaIssue> issues = LocaloQa.Run("groups", settings);
+
+                Assert.That(issues.Where(issue => issue.Severity == LocaloQaSeverity.Warning).Select(issue => issue.Key),
+                    Is.EquivalentTo(new[] { "NO_STEP", "NO_GROUP", "BAD", "DUP", "CASE2", "WIDE" }));
+                Assert.That(issues.Where(issue => issue.Severity == LocaloQaSeverity.Info).Select(issue => issue.Key),
+                    Is.EquivalentTo(new[] { "ALONE" }));
+                LocaloQaIssue duplicate = issues.First(issue => issue.Key == "DUP");
+                Assert.That(duplicate.Table, Is.SameAs(table));
+                Assert.That(duplicate.RowIndex, Is.EqualTo(2));
+                Assert.That(duplicate.HasLanguage, Is.False);
+                Assert.That(duplicate.CheckId, Is.EqualTo("groups"));
+            }
+            finally
+            {
+                Object.DestroyImmediate(table);
+                Object.DestroyImmediate(settings);
+            }
+        }
+
+        [Test]
         public void CheckIds_AreUnique()
         {
             Assert.That(LocaloQa.CheckIds, Is.Unique);

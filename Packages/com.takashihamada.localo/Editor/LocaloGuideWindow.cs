@@ -63,14 +63,16 @@ namespace Localo.Editor
                     EditorGUILayout.LabelField(
                         "Translationタブでシートごとの文章の種類（Text Type）と翻訳方針を編集できます。\n" +
                         "シートは文章の種類と声（話者・口調）の単位です。話者や基本の口調が変わる場合は、シートを分けてください。\n" +
-                        "Tableの各行のCommentの右にある詳細アイコンで、AIが調査したその行の場面（Scene）と器（Display Space）を確認・修正できます。\n" +
+                        "Tableの各行のCommentの右にある詳細アイコンで、AIが調査したその行のグループ（Group・Step）、場面（Scene）、器（Display Space）を確認・修正できます。同じグループの行は表示される順に並びます。\n" +
+                        "Tableでは、同じグループの行が同じ色で薄く塗られます（Keyにマウスを乗せるとGroupとStepを表示）。\n" +
                         "左右キーまたはh/lで詳細アイコンまで移動すると、自動でスクロールします。Enterまたはiで詳細を開きます。\n" +
+                        "詳細ウィンドウの下にあるDelete Rowで、その行を削除できます（確認あり、Undoで元に戻せます）。Tableで行を選んでdを2回押しても削除できます。\n" +
                         "Commentは人間が書くメモです。AIは読むだけで編集しません。\n" +
                         "Translationタブでシートを選び、Translator Lockで翻訳者担当の言語にチェックすると、列全体をAIの上書きから保護します。表では■を付けて表示します。\n" +
                         "翻訳者担当の入力済みの訳は、ほかの文章を訳すお手本としてJSONに含まれます。人間はTableで文章を修正できます。\n" +
                         "Language Guidelinesでは、8言語の対象地域と翻訳の注意点を閲覧できます。共通の注意点と出典は折りたたみで表示します。\n" +
                         "AI向けJSONには、翻訳前にシート全体の原文と既存訳を確認し、言語ごとの口調を推定する手順を含めます。JSONを渡すAIが、人間の指定と翻訳者の確定訳を優先して翻訳します。\n" +
-                        "TranslationタブのCopy All Context as JSONで、文章の種類・方針・用語集・コメント・場面・器と、有効な言語のガイドをまとめてAIに渡せます。",
+                        "TranslationタブのCopy All Context as JSONで、文章の種類・方針・用語集・コメント・グループ・場面・器と、有効な言語のガイドをまとめてAIに渡せます。",
                         EditorStyles.wordWrappedLabel);
                 }
 
@@ -108,6 +110,7 @@ namespace Localo.Editor
                         "Manual Line Breaks: 手で入れた改行（<br>・\\n）の直後が「、」「。」などで始まる訳文を探します。手で入れた改行には禁則処理が効きません。\n" +
                         "Platform Terms: 選んだ機種のボタン名・機能名について、同梱の一覧で公式ではないとした書き方を探します。\n" +
                         "Kanji Range: 日本語の列で、Project Profileの漢字の範囲（例: 小2まで）を超える漢字を探します。\n" +
+                        "Groups: 行のグループ（Group）と位置（Step）について、片方だけの入力、書式違い、位置の重なり、1行だけのグループを探します。\n" +
                         "Legacy Text Usage: legacy Text（UnityEngine.UI.Text）と TextMesh の使用箇所を探します。legacy Text には禁則処理が無いため、TextMesh Pro か UI Toolkit を使ってください。\n" +
                         "Line Break Settings: TMP Settings と PanelSettings（UI Toolkit）に、行頭禁則・行末禁則のリストが割り当てられているかを調べます。\n" +
                         "チェックは画面を使いません。表示の見た目は人間が確認してください。",

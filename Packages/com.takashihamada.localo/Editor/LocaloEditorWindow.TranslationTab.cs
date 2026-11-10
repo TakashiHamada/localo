@@ -3,7 +3,7 @@
 // =============================================================================
 // 選択中のシート（_table）について、文章の種類（Text Type）・翻訳方針・Translator Lock を編集し、
 // 全シートのコンテキストJSON（LocaloTranslationContext）をコピーする。
-// 行ごとの場面と器は LocaloRowDetailsWindow、用語集は GlossaryTab が担当する。
+// 行ごとのグループ・場面・器は LocaloRowDetailsWindow、用語集は GlossaryTab が担当する。
 // =============================================================================
 
 using System.Collections.Generic;
@@ -89,7 +89,7 @@ namespace Localo.Editor
             EditorGUILayout.HelpBox(
                 "シートは文章の種類と声（話者・口調）の単位です。話者や基本の口調が変わる場合は、シートを分けてください。\n" +
                 "このシートの話者、性格、口調など、シート全体に共通する翻訳方針を自由に記述します。文字数の制限はありません。\n" +
-                "行ごとの場面と器は、Tableの各行の詳細アイコンから確認します。",
+                "行ごとのグループ・場面・器は、Tableの各行の詳細アイコンから確認します。",
                 MessageType.None);
             EditorGUILayout.PropertyField(translationInstructions,
                 new GUIContent("Translation Guidelines", "話者、性格、口調など、シート全体の翻訳方針を自由に記述します。"));
@@ -139,7 +139,7 @@ namespace Localo.Editor
             if (GUILayout.Button(new GUIContent("Copy All Context as JSON", "全シートの文脈と、有効な言語の翻訳ガイドをJSONでコピーします。")))
                 EditorGUIUtility.systemCopyBuffer = LocaloTranslationContext.ExportToString(_settings);
             EditorGUILayout.LabelField(
-                "シートの種類と方針・用語集・人間のコメント・行の場面と器・言語別ガイドをまとめてAIに渡せます。ガイドはプレビューの選択に関係なく、有効な全言語を含みます。",
+                "シートの種類と方針・用語集・人間のコメント・行のグループと場面と器・言語別ガイドをまとめてAIに渡せます。ガイドはプレビューの選択に関係なく、有効な全言語を含みます。",
                 EditorStyles.wordWrappedMiniLabel);
         }
     }

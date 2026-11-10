@@ -55,7 +55,7 @@ namespace Localo.Tests
                 Assert.That(settings.targetPlatforms, Is.Empty);
                 Assert.That(LocaloProjectProfileOptions.CreateContext(settings), Is.Null);
                 Assert.That(UnityEngine.JsonUtility.FromJson<SchemaOnly>(LocaloTranslationContext.ExportToString(settings)).schemaVersion,
-                    Is.EqualTo(6));
+                    Is.EqualTo(7));
             }
             finally { UnityEngine.Object.DestroyImmediate(settings); }
         }
