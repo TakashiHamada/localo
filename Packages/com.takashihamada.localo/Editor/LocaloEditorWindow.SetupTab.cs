@@ -3,6 +3,7 @@
 // =============================================================================
 // Handles assigning/editing LocalizationSettings, the enabled-language checkboxes,
 // and the enabled-language column order (ReorderableList).
+// 作品全体の翻訳の設定（Project Profile・Target Platforms・Project Lessons）は Translation タブにある。
 //
 // 翻訳元は先頭に固定し、残りの言語だけを並べ替える。Englishは実行時のフォールバックとして有効に保つ。
 // =============================================================================
@@ -41,6 +42,10 @@ namespace Localo.Editor
             "Editor/Resources/LocaloProjectSkillTemplate.txt";
         private const string ProjectSkillMetadataTemplateRelativePath =
             "Editor/Resources/LocaloProjectSkillOpenAiTemplate.txt";
+        // 翻訳のコツ（全言語共通と言語別）。SKILL.md と同じフォルダに書き出し、Skillから参照する。
+        internal const string TranslationGuideTemplateRelativePath =
+            "Editor/Resources/LocaloTranslationGuideTemplate.txt";
+        private const string TranslationGuideFileName = "translation-guide.md";
 
         private ReorderableList _languageOrderList;
         private List<SystemLanguage> _languageOrderBuffer = new List<SystemLanguage>();
@@ -102,14 +107,6 @@ namespace Localo.Editor
                         "翻訳元を変更するときは、既存の原文とSource Termがその言語で書かれているか確認してください。",
                         MessageType.None);
                 }
-
-                EditorGUILayout.Space(8f);
-                using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
-                    DrawProjectProfileSection();
-
-                EditorGUILayout.Space(8f);
-                using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
-                    DrawTargetPlatformsSection();
 
                 EditorGUILayout.Space(8f);
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
@@ -238,7 +235,8 @@ namespace Localo.Editor
         {
             var skillTemplate = LocaloPackageFiles.LoadText(ProjectSkillTemplateRelativePath);
             var metadataTemplate = LocaloPackageFiles.LoadText(ProjectSkillMetadataTemplateRelativePath);
-            if (skillTemplate == null || metadataTemplate == null)
+            var guideTemplate = LocaloPackageFiles.LoadText(TranslationGuideTemplateRelativePath);
+            if (skillTemplate == null || metadataTemplate == null || guideTemplate == null)
             {
                 EditorUtility.DisplayDialog(
                     "Localo Project AI Skill",
@@ -249,7 +247,7 @@ namespace Localo.Editor
 
             if (isInstalled && !EditorUtility.DisplayDialog(
                     "Update Localo Project AI Skill",
-                    ".agents/skills/localo/SKILL.mdとagents/openai.yamlを置き換えますか？\n\n" +
+                    ".agents/skills/localo のSKILL.md・translation-guide.md・agents/openai.yamlを置き換えますか？\n\n" +
                     "これらのファイルに加えたプロジェクト独自の変更は上書きされます。",
                     "Replace", "Cancel"))
             {
@@ -265,6 +263,7 @@ namespace Localo.Editor
                 Directory.CreateDirectory(metadataDirectory);
                 var utf8WithoutBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
                 File.WriteAllText(skillFilePath, skillTemplate.text, utf8WithoutBom);
+                File.WriteAllText(Path.Combine(skillDirectory, TranslationGuideFileName), guideTemplate.text, utf8WithoutBom);
                 File.WriteAllText(Path.Combine(metadataDirectory, "openai.yaml"), metadataTemplate.text, utf8WithoutBom);
 
                 EditorUtility.DisplayDialog(

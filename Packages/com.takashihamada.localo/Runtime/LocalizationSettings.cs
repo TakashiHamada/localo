@@ -172,8 +172,6 @@ namespace Localo.Runtime
     {
         [Tooltip("対象年齢層のIDです。空なら未指定です。")]
         public string audience = string.Empty;
-        [Tooltip("ジャンルのIDです（複数可）。")]
-        public List<string> genres = new List<string>();
         [Tooltip("トーンのIDです（複数可）。")]
         public List<string> tones = new List<string>();
         [Tooltip("日本語の漢字の範囲のIDです。空なら対象年齢に合わせます。")]

@@ -1,5 +1,5 @@
 // =============================================================================
-// LocaloProjectProfileOptions.cs — 作品プロファイル（対象年齢・ジャンル・トーン・漢字の範囲）の選択肢
+// LocaloProjectProfileOptions.cs — 作品プロファイル（対象年齢・トーン・漢字の範囲）の選択肢
 // =============================================================================
 // 選択肢と、AIに渡す具体的な指針文は Editor/Resources/LocaloProjectProfileOptions.json で管理する。
 // プロジェクトの設定（LocalizationSettings.projectProfile）には選択肢のIDだけを保存するので、
@@ -25,7 +25,7 @@ namespace Localo.Editor
 
         internal static ProjectProfileOptionsCatalog Load() =>
             LocaloPackageFiles.LoadJson(RelativePath, "作品プロファイルの選択肢",
-                catalog => catalog.audiences != null && catalog.genres != null && catalog.tones != null && catalog.kanjiRanges != null,
+                catalog => catalog.audiences != null && catalog.tones != null && catalog.kanjiRanges != null,
                 ref _loadedJson, ref _catalog);
 
         /// <summary>保存された漢字の範囲。未指定（自動）なら対象年齢の既定の範囲。どちらも無ければ null。</summary>
@@ -41,12 +41,11 @@ namespace Localo.Editor
 
         /// <summary>何か1つでも選ばれているか。</summary>
         internal static bool HasAnySelection(LocaloProjectProfile profile) =>
-            profile != null && (!string.IsNullOrEmpty(profile.audience) ||
-                                (profile.genres?.Count ?? 0) > 0 || (profile.tones?.Count ?? 0) > 0 ||
+            profile != null && (!string.IsNullOrEmpty(profile.audience) || (profile.tones?.Count ?? 0) > 0 ||
                                 !string.IsNullOrEmpty(profile.kanjiRange));
 
         /// <summary>
-        /// AI向けコンテキストとプレビューに使う形にする。IDに加えて表示名と指針文を展開する。
+        /// AI向けコンテキストに使う形にする。IDに加えて表示名と指針文を展開する。
         /// 日本語が有効でないプロジェクトには、漢字の範囲を含めない。
         /// </summary>
         internal static ProjectProfileContext CreateContext(LocalizationSettings settings)
@@ -57,7 +56,6 @@ namespace Localo.Editor
             var context = new ProjectProfileContext
             {
                 audience = Find(catalog.audiences, profile.audience),
-                genres = FindAll(catalog.genres, profile.genres),
                 tones = FindAll(catalog.tones, profile.tones)
             };
             bool japaneseEnabled = settings.enabledLanguages != null &&
@@ -66,18 +64,6 @@ namespace Localo.Editor
             if (range != null)
                 context.japaneseKanjiRange = range.Copy();
             return context;
-        }
-
-        /// <summary>選択内容を画面用に1行で表す（例: Lower Elementary (6-8) / Puzzle / Gentle, Cute / Up to Grade 2）。</summary>
-        internal static string Summarize(ProjectProfileContext context)
-        {
-            if (context == null) return string.Empty;
-            var parts = new List<string>();
-            if (context.audience != null) parts.Add(context.audience.name);
-            if (context.genres.Count > 0) parts.Add(string.Join(", ", context.genres.Select(genre => genre.name)));
-            if (context.tones.Count > 0) parts.Add(string.Join(", ", context.tones.Select(tone => tone.name)));
-            if (context.japaneseKanjiRange != null) parts.Add(context.japaneseKanjiRange.name);
-            return string.Join(" / ", parts);
         }
 
         private static ProjectProfileOption Find(ProjectProfileOption[] options, string id)
@@ -99,7 +85,6 @@ namespace Localo.Editor
     {
         public string reviewedOn;
         public ProjectProfileAudience[] audiences;
-        public ProjectProfileOption[] genres;
         public ProjectProfileOption[] tones;
         public ProjectProfileKanjiRange[] kanjiRanges;
     }
@@ -134,11 +119,10 @@ namespace Localo.Editor
 
     // コンテキストJSON（projectProfile）の形。フィールド名がJSONのキーになる。
     [Serializable]
-    // 使い方の説明は LocaloTranslationContext の instructions にまとめる。未選択の項目は空の値になる。
+    // 使い方の説明は配布用Skillにまとめる。未選択の項目は空の値になる。
     internal sealed class ProjectProfileContext
     {
         public ProjectProfileOption audience;
-        public List<ProjectProfileOption> genres = new List<ProjectProfileOption>();
         public List<ProjectProfileOption> tones = new List<ProjectProfileOption>();
         public ProjectProfileOption japaneseKanjiRange;
     }

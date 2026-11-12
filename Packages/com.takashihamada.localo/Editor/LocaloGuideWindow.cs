@@ -4,7 +4,8 @@ using UnityEngine;
 namespace Localo.Editor
 {
     /// <summary>
-    /// Localoの使い方とショートカットを表示するウィンドウ。メインウィンドウのツールバー右端の「?」ボタンから開く。
+    /// 作業の流れの要約とショートカットを表示するウィンドウ。メインウィンドウのツールバー右端の「?」ボタンから開く。
+    /// 各項目の説明は、その項目がある画面の HelpBox とツールチップに書く（ここに写しを置かない）。
     /// </summary>
     public sealed class LocaloGuideWindow : EditorWindow
     {
@@ -35,85 +36,25 @@ namespace Localo.Editor
                 EditorGUILayout.Space(8f);
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                 {
-                    EditorGUILayout.LabelField("-- Setup --", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField("-- Workflow --", EditorStyles.boldLabel);
                     EditorGUILayout.LabelField(
-                        "1. Quick Setupで設定アセットと最初のシートを作成します。\n" +
-                        "2. プロジェクトで使う言語を有効にし、Source Languageで翻訳元の言語を選びます。翻訳元はTableとGlossaryの先頭に固定されます。\n" +
-                        "3. TableとGlossaryに表示する言語列を選びます。非表示の列もデータは保持されます。\n" +
-                        "4. 言語列の順番や列幅を調整します。\n" +
-                        "5. SetupのRegistered Tablesにある「+ Add Table」でシートを追加できます。\n" +
-                        "6. Project Profileで作品全体の対象年齢・ジャンル・トーンと日本語の漢字の範囲を、Target Platformsで対象の機種を選びます。AIの翻訳・仮の文字の基準と、QAに使います。",
+                        "1. Setup: Quick Setupで設定アセットと最初のシートを作成し、使う言語と翻訳元（Source Language）を選びます。AIスキルもここでインストールします。\n" +
+                        "2. Translation: Projectに作品全体の設定（対象年齢・トーン・漢字の範囲、対象の機種、言語ごとのProject Lessons）を、Sheetにシートごとの翻訳方針とTranslator Lockを記入します。\n" +
+                        "3. Glossary: 全シート共通の用語の正式表記と、意味・使い方を記入します。\n" +
+                        "4. Table: 文章を編集します。Commentは人間のメモで、AIは読むだけです。\n" +
+                        "5. AI: スキルを入れたAIが、翻訳、行の場面・器・グループの調査、文字の機械的なチェック（QA）を行い、結果を報告します。",
                         EditorStyles.wordWrappedLabel);
                 }
 
                 EditorGUILayout.Space(8f);
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                 {
-                    EditorGUILayout.LabelField("-- Table Basics --", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField("-- Table Marks --", EditorStyles.boldLabel);
                     EditorGUILayout.LabelField(
-                        "上部のプルダウンでシートを選び、キーボードまたはマウスでセルを選択します。" +
-                        "iキーまたはダブルクリックで編集を開始すると、選択したセルに入力できます。",
-                        EditorStyles.wordWrappedLabel);
-                }
-
-                EditorGUILayout.Space(8f);
-                using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
-                {
-                    EditorGUILayout.LabelField("-- Translation & Details --", EditorStyles.boldLabel);
-                    EditorGUILayout.LabelField(
-                        "Translationタブでシートごとの文章の種類（Text Type）と翻訳方針を編集できます。\n" +
-                        "シートは文章の種類と声（話者・口調）の単位です。話者や基本の口調が変わる場合は、シートを分けてください。\n" +
-                        "Tableの各行のCommentの右にある詳細アイコンで、AIが調査したその行のグループ（Group・Step）、場面（Scene）、器（Display Space）を確認・修正できます。同じグループの行は表示される順に並びます。\n" +
-                        "Tableでは、同じグループの行が同じ色で薄く塗られます（Keyにマウスを乗せるとGroupとStepを表示）。\n" +
-                        "左右キーまたはh/lで詳細アイコンまで移動すると、自動でスクロールします。Enterまたはiで詳細を開きます。\n" +
-                        "詳細ウィンドウの下にあるDelete Rowで、その行を削除できます（確認あり、Undoで元に戻せます）。Tableで行を選んでdを2回押しても削除できます。\n" +
-                        "Commentは人間が書くメモです。AIは読むだけで編集しません。\n" +
-                        "Translationタブでシートを選び、Translator Lockで翻訳者担当の言語にチェックすると、列全体をAIの上書きから保護します。表では■を付けて表示します。\n" +
-                        "翻訳者担当の入力済みの訳は、ほかの文章を訳すお手本としてJSONに含まれます。人間はTableで文章を修正できます。\n" +
-                        "Language Guidelinesでは、8言語の対象地域と翻訳の注意点を閲覧できます。共通の注意点と出典は折りたたみで表示します。\n" +
-                        "AI向けJSONには、翻訳前にシート全体の原文と既存訳を確認し、言語ごとの口調を推定する手順を含めます。JSONを渡すAIが、人間の指定と翻訳者の確定訳を優先して翻訳します。\n" +
-                        "TranslationタブのCopy All Context as JSONで、文章の種類・方針・用語集・コメント・グループ・場面・器と、有効な言語のガイドをまとめてAIに渡せます。",
-                        EditorStyles.wordWrappedLabel);
-                }
-
-                EditorGUILayout.Space(8f);
-                using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
-                {
-                    EditorGUILayout.LabelField("-- Glossary --", EditorStyles.boldLabel);
-                    EditorGUILayout.LabelField(
-                        "Glossaryタブで、全シート共通の用語集をTableと同じ操作で編集できます。\n" +
-                        "Keyの代わりにSource Term、Commentの代わりにNotes（意味・使い方）を表示し、その間に各言語の正式表記を並べます。\n" +
-                        "Source Termには、翻訳元の言語で用語や行の意味を記入します。実際の正式表記は各言語の列に記入します。\n" +
-                        "列の表示・順番・幅はSetupの設定を共有します。+ Add Termまたはoで用語を追加し、iまたはダブルクリックで編集できます。\n" +
-                        "右端の×をクリックすると用語を行ごと削除します。×を選択してEnterまたはiでも削除でき、Undoで元に戻せます。\n" +
-                        "AI向けJSONには、翻訳前に用語集全体を読み、翻訳後に登録用語の使用を確認する手順を含めます。\n" +
-                        "Platform Termsで、SetupのTarget Platformsで選んだ機種のボタン名などの公式表記を閲覧できます（同梱データ・閲覧専用）。用語集に同じ語を書くと、用語集が優先されます。",
-                        EditorStyles.wordWrappedLabel);
-                }
-
-                EditorGUILayout.Space(8f);
-                using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
-                {
-                    EditorGUILayout.LabelField("-- QA --", EditorStyles.boldLabel);
-                    EditorGUILayout.LabelField(
-                        "QAタブで、文字に関する機械的なチェックを実行できます。Run Allで登録されたすべてのチェックを一括で、各チェックのRunでそのチェックだけを実行します。\n" +
-                        "指摘の場所のボタンを押すと、Tableのそのセル、シーン・プレハブ、またはスクリプトのその行へ移ります。\n" +
-                        "重大度: Errorは実行時に壊れるもの、Warningは画面に出る可能性が高いもの、Infoは意図的な場合もあるものです。\n" +
-                        "Missing Translations: 原文があるのに訳が空欄の行を探します。\n" +
-                        "Missing Keys: シーン・プレハブ・スクリプトで使っているキーが、どのテーブルにも無い箇所を探します。\n" +
-                        "Placeholder Mismatch: 原文と訳で {0} などの組が違う行を探します。\n" +
-                        "Tag Mismatch: 原文と訳で <color> などのタグが違う行や、閉じ忘れたタグを探します。\n" +
-                        "Invalid Characters: タブ・ゼロ幅文字・文字化けの記号など、見えない文字や表示できない文字を探します。\n" +
-                        "Missing Glyphs: TMPの既定のフォントと代替フォントに無い（□になる）文字を探します。\n" +
-                        "Whitespace: 先頭・末尾の空白の有無が原文と違う行や、連続した半角スペースを探します。\n" +
-                        "Punctuation: 中国語・日本語の文中の半角の , . や、韓国語・欧米の言語に混じった全角の句読点を探します。\n" +
-                        "Manual Line Breaks: 手で入れた改行（<br>・\\n）の直後が「、」「。」などで始まる訳文を探します。手で入れた改行には禁則処理が効きません。\n" +
-                        "Platform Terms: 選んだ機種のボタン名・機能名について、同梱の一覧で公式ではないとした書き方を探します。\n" +
-                        "Kanji Range: 日本語の列で、Project Profileの漢字の範囲（例: 小2まで）を超える漢字を探します。\n" +
-                        "Groups: 行のグループ（Group）と位置（Step）について、片方だけの入力、書式違い、位置の重なり、1行だけのグループを探します。\n" +
-                        "Legacy Text Usage: legacy Text（UnityEngine.UI.Text）と TextMesh の使用箇所を探します。legacy Text には禁則処理が無いため、TextMesh Pro か UI Toolkit を使ってください。\n" +
-                        "Line Break Settings: TMP Settings と PanelSettings（UI Toolkit）に、行頭禁則・行末禁則のリストが割り当てられているかを調べます。\n" +
-                        "チェックは画面を使いません。表示の見た目は人間が確認してください。",
+                        "Commentの右の詳細アイコンで、AIが調査したその行のグループ（Group・Step）、場面（Scene）、器（Display Space）を確認・修正できます。行の削除もここからできます。\n" +
+                        "同じグループの行は、同じ色で薄く塗られます（Keyにマウスを乗せるとGroupとStepを表示）。\n" +
+                        "■の付いたセルは、Translator Lockで翻訳者担当にした列です。AIは変更しません。\n" +
+                        "赤いKeyは、登録されたシートの中で重複しているキーです。",
                         EditorStyles.wordWrappedLabel);
                 }
 
@@ -130,6 +71,7 @@ namespace Localo.Editor
                     DrawShortcutRow("x / Delete / Backspace", "選択したセルの内容を消去します。行は削除しません。");
                     DrawShortcutRow("o", "現在の行の下に新しい行を挿入します。");
                     DrawShortcutRow("d d", "現在の行を削除します。");
+                    DrawShortcutRow("× (Glossary)", "用語を行ごと削除します。選択してEnterまたはiでも削除でき、Undoで元に戻せます。");
                     DrawShortcutRow("/", "検索欄にフォーカスを移します。");
                     DrawShortcutRow("Ctrl/Cmd + C/X/V", "選択範囲をTSV形式でコピー・切り取り・貼り付けします。");
                 }

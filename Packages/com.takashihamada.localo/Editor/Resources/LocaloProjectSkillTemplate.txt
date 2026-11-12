@@ -1,11 +1,13 @@
 ---
 name: localo
-description: Maintain Localo localization data and integrations in Unity projects. Use for Localo translation tables, language settings, TextMesh Pro bindings, runtime language switching, editor tooling, migration, and troubleshooting.
+description: Maintain Localo localization in Unity projects. Use for translating with the project's context, researching where a key is shown, mechanical text QA after changing translations or text UI (missing keys, placeholders, tags, glyphs, line breaks, kanji range), CSV review, TextMesh Pro bindings, runtime language switching, and troubleshooting.
 ---
 
 # Localo
 
 Treat `Packages/com.takashihamada.localo/` as the installed tool and `Assets/LocaloAssets/` as project-owned translation data. Never edit a cached package under `Library/PackageCache`; make reusable tool changes in the Localo source repository.
+
+このフォルダの `translation-guide.md` は、翻訳のコツ（全言語共通と言語別）をまとめた参照資料。作業の手順・優先順位・禁止事項は、このファイルだけに書く。
 
 ## Workflow
 
@@ -23,54 +25,108 @@ Treat `Packages/com.takashihamada.localo/` as the installed tool and `Assets/Loc
 - Register every runtime table in `registeredTables`, and keep keys unique across all registered tables.
 - Resolution is requested language, then English. Missing keys return the key; an explicitly blank base translation stays blank.
 - Store intentional line breaks as `<br>`.
-- 各行の `comment`（コメント欄）は人間が書くメモ。AIは翻訳の参考として読むだけにし、新規作成・追記・変更・削除・自動補完を行わない。空欄もそのまま残す。
-- AIが調査した行の文脈は、コメント欄に書かない。行の `aiScene`（場面）、`aiDisplaySpace`（器）、`aiGroup`・`aiGroupStep`（グループと位置）に保存する。人間のメモと調査結果を自動で移動・統合しない。
 
-## 翻訳の文脈と用語集
+## 翻訳に使う情報
 
-文脈は2段で持つ。シートが大きい文脈、行が細かい文脈を持つ。
+コンテキストJSON（schema version 9）で読む。JSONはデータだけを含む。
 
-- シート：「Translation」タブの `LocalizationTable.textType`（文章の種類）と `translationInstructions`（話者・性格・口調などシートの声を含む自由記述の翻訳方針）。シートは文章の種類と声の単位であり、1つのシートに複数の話者を混ぜない。話者や基本の口調が変わる文章を見つけたら、シートを分けるよう人間に提案する。AIはシートの設定を変更しない。
-- 行：`LocalizationRow.aiScene`（場面：どこで、何がきっかけで、誰に向けて表示されるか）と `aiDisplaySpace`（器：表示する部品・幅・行数・フォントサイズ・自動縮小・表示時間）。どちらもAIがキーをもとに調査して書き、人間は確認だけ行う。
-- グループ：`LocalizationRow.aiGroup`（グループ名）と `aiGroupStep`（グループの中の位置）。続けて表示される行のまとまり（1つの会話、1つの画面の問いと答え）を表す。グループ名は登録された全シートで共通で、別のシートの行も同じグループに入れられる。位置は番号と分岐の英字をハイフンで交互につなぐ（`1`、`2`、`2-A`／`2-B` は2に対する選択肢、`2-A-1` はAを選んだ後の続き、`3` は合流後）。AIが下の手順で調査して書き、人間はDetailsで確認・修正する。
-- 共通用語集は `LocalizationSettings.glossary` に保存される。GlossaryタブはTableと同じ表形式で、Source Term・各言語の正式表記・Notesを編集する。Source TermはSetupのSource Languageで選んだ言語で書く用語・行の識別名であり、実際の正式表記は各言語の列に保存する。右端の×で行を削除できる。
-- 翻訳前にコンテキストJSONの `glossary` 全体を必ず読み、Notesにある意味・使い方を確認し、対象言語の正式表記を優先する。行単位の翻訳でも同じ手順とする。翻訳後は該当する登録用語が守られているか確認する。人間の指示・確定訳と矛盾したら勝手に決めず報告する。
-- 翻訳前に `Localo.Editor.LocaloTranslationContext.ExportToString()`、または `ExportRowToString(table, key)` を呼ぶ。文章の種類・方針・用語集・翻訳文・人間のコメント・グループ・場面・器が区別されたJSONを読み、翻訳に反映する。場面や器が空・不明なら、下の手順で調査する。
-- グループに属する行は、`ExportGroupToString(group)` でグループごとに取り出して訳す。JSONの `groups` にグループの行が表示される順に並び、各行の `aiGroup`・`aiGroupStep` で位置がわかる。前後の行の流れ、問いと答えの対応（言い回し・敬語・呼称）を保って訳す。`ExportRowToString` は、行がグループに属していればグループの全行を含め、`focusKey` に対象のキーを入れる。`focusKey` の行だけを訳し、ほかの行は文脈として読むだけにする。
-- 場面と器は `LocaloTranslationContext.SetRowContext(table, key, scene, displaySpace)` で保存する。`null` を渡した項目は変更しない。このAPIはコメント欄・翻訳文・シートの設定を変更しない。旧APIの `SetResearch` は使わない。人間はTableの行ごとのCommentの右にある詳細アイコンからグループ・場面・器を確認・修正できる。
+| API（`Localo.Editor.LocaloTranslationContext`） | 内容 |
+| --- | --- |
+| `ExportToString()` | 全シートの全行と、作品全体の情報。作業の最初に1回読む |
+| `ExportGroupToString(group)` | そのグループの行だけ |
+| `ExportRowToString(table, key)` | その行だけ。行がグループに属していれば、グループの全行を含める |
 
-### 言語別ガイドとシートの口調
+行とグループの書き出しでは、`platformTerms` は空になる（全体の書き出しで読む）。`focusKey` が空でなければ、その行だけを訳し、ほかの行は文脈として読むだけにする。
 
-- コンテキストJSONはschema version 8。ルートの`sourceLanguage`の言語を原文とし、他の言語へ翻訳する。原文が空欄なら他言語から推測せず報告する。翻訳元の文章を翻訳先として上書きしない。`languageGuidelines.commonPoints`と翻訳先に対応する`languageGuidelines.languages`を翻訳前に読む。`locale`・`region`・`points`・`notes`と出典を参照する。TranslationタブのLanguage Guidelinesも同じ資料を表示する。
-- `languageLessons` は、TranslationタブのProject Lessons（`LocalizationSettings.languageLessons`）に人間が保存した、この作品のその言語で確定した書き方（全体で固定する語、強調の手段、年齢に合う語の選び方など）。翻訳先の言語の項目を翻訳前に必ず読み、同梱の言語別ガイドより優先する。シートの方針・用語集と食い違う場合は報告する。
-- AIは `languageLessons` を保存・変更しない。翻訳者の確定訳と以前の訳の違いなどから、ほかのシートにも当てはまる書き方が分かったら、追記する文面の案を作業報告に示し、人間が確認して貼り付ける。話者ごとの声はシートの方針、用語の表記は用語集の担当なので、この欄の案に混ぜない。
-- 既定はen-US・ko-KR・zh-CN・zh-TW・de-DE・fr-FR・es-419・pt-BR。人間の地域・口調の指定、用語集、翻訳者の確定訳を優先し、一般的なガイドで上書きしない。
-- 翻訳前にシート全体の原文と既存訳を読み、対象言語ごとの口調方針を決める。人間のシート方針、用語集、同じシートの翻訳者の確定訳を優先し、未指定なら話者・相手・場面から敬語・呼称・語尾などを推定する。人間の翻訳方針の欄を推定結果で書き換えない。
-- 同じ話者と相手の関係では口調を揃える。例えば韓国語の합니다体・해요体・반말は関係と場面で使い分け、相手によって変わる敬語や、感情・関係の変化に伴う意図的な切替を一律に揃えない。別シートの訳から話者の口調を無条件に流用しない。
-- 対象シート全体が未確認なら`ExportToString()`で取得し、口調方針を決める。全体の確認後は行単位・グループ単位のJSONも使える。推定した言語別の口調方針を作業報告に添える。既存訳との矛盾や関係性の不明点は、調べても解決できなければKey・言語・理由を添えて人間に報告する。
-- `ExportToString(targetLanguages: new[] { SystemLanguage.Korean })`のように、ガイドだけを有効な対象言語に絞れる。`ExportRowToString`も同じ引数を持つ。`languageLessons` も同じ対象に絞られる。原文・用語集・お手本の言語はこの引数で削除されない。引数を省略すると有効な全言語のガイドを含む。日本語は今回の言語別ガイドの対象外。
+| JSONの項目 | 内容 | 書く人 |
+| --- | --- | --- |
+| `sourceLanguage` | 翻訳元の言語。この言語の文章を原文とし、他の言語へ訳す。列の位置やEnglish固定で推測しない | 人間 |
+| `glossary` | 全シート共通の用語集。`source` は翻訳元の言語で書いた用語の識別名で、正式表記は各言語の `translations`、意味と使い方は `notes` にある | 人間 |
+| `projectProfile` | 作品全体の対象年齢・トーン・日本語の漢字の範囲と、その指針文。`japaneseKanjiRange` は日本語の列にだけ当てはめる | 人間 |
+| `languageLessons` | Project Lessons。この作品のその言語で確定した書き方 | 人間 |
+| `platformTerms` | 選んだ機種のボタン名・機能名の公式表記。`avoid` は使わない書き方。`status` が `reference` の表記は、公式ページが無い言語の参考値 | 同梱データ |
+| `tables[].translationInstructions` | シートの翻訳方針。話者・性格・口調など、シートの声 | 人間 |
+| `tables[].translatorLanguages` | 翻訳者担当の言語。この列に入っている訳が、翻訳者の確定訳 | 人間 |
+| `rows[].translations` | 各言語の文章 | 人間とAI |
+| `rows[].humanComment` | 人間のメモ | 人間 |
+| `rows[].aiScene` | 場面。どこで、何がきっかけで、誰に向けて表示されるか | AI |
+| `rows[].aiDisplaySpace` | 器。表示する部品・幅・行数・フォントサイズ・自動縮小・表示時間 | AI |
+| `rows[].aiGroup`・`aiGroupStep`、`groups` | 続けて表示される行のまとまり（1つの会話、1つの画面の問いと答え）と、その中の位置。`groups[].members` が表示される順に並ぶ | AI |
 
-### 作品プロファイルと機種の公式表記
+- シートは声の単位で、1つのシートに複数の話者を混ぜない。話者や基本の口調が変わる文章を見つけたら、シートを分けるよう人間に提案する。
+- グループ名は登録された全シートで共通で、別のシートの行も同じグループに入る。位置は番号と分岐の英字をハイフンで交互につなぐ。`2-A`／`2-B` は2に対する選択肢、`2-A-1` はAを選んだ後の続き、`3` は合流後を表す。
+- AIが書いた項目（場面・器・グループ）は、推測や不明点を含むことがある。
 
-- SetupのProject Profileは `LocalizationSettings.projectProfile` に、選択肢のIDだけを保存する（対象年齢・ジャンル・トーン・日本語の漢字の範囲）。選択肢と指針文はパッケージ同梱の `Editor/Resources/LocaloProjectProfileOptions.json` にある。AIはこの設定を変更しない。
-- コンテキストJSONの `projectProfile` は、選んだ項目の表示名と `guidance`（指針文）を含む。全言語の語彙・口調・文の長さ・表記の大きな指針にする。シートの方針・用語集・人間の指示・翻訳者の確定訳と食い違う場合はそちらを優先する。`japaneseKanjiRange` は日本語の列にだけ適用する。
-- 仮の文字（まだ原文が決まっていない文言の仮置き）や新しい文言を書くときも、`projectProfile` の対象年齢・トーン・漢字の範囲と `platformTerms` に従う。書いた仮の文字は仮であることを作業報告に書く。
-- SetupのTarget Platformsで選んだ機種は `LocalizationSettings.targetPlatforms` に保存される。コンテキストJSONの `platformTerms` は、その機種のボタン名・機能名の公式表記（有効な言語のみ）。ボタン名などは対象言語の `text` を使い、`avoid` の書き方を使わない。`status` が `reference` の表記は公式ページが無い言語の参考値なので、採用したら報告する。
-- `platformTerms` は一般公開の製品ページの表記で、ロットチェックなどの用語規定ではない。Glossaryに同じ語があればGlossaryを優先し、食い違いを報告する。同梱データに無い機種・用語を推測で補わない。
-- QAの `platform-terms` は `avoid` の書き方を、`kanji-range` は範囲を超える漢字を探す。漢字を直すときは、かなに開くか範囲内の語に言い換える。読み（音訓）が範囲内かどうかは機械的に調べられないため、自己レビューで確認する。
+## 優先順位
 
-### 行の文脈（場面と器）の調査手順
+食い違いを見つけたら、上の段を優先する。同じ段の中の食い違いは勝手に決めず、Key・言語・理由を添えて報告する。
 
-人間がキーを指定して調査を依頼したときに使う。
+| 段 | 情報 |
+| --- | --- |
+| 1 | 人間のその場の指示、翻訳者の確定訳、用語集、シートの翻訳方針、人間のコメント |
+| 2 | Project Lessons（`languageLessons`） |
+| 3 | Project Profile（`projectProfile`） |
+| 4 | 機種の公式表記（`platformTerms`） |
+| 5 | `translation-guide.md` |
 
-1. `ExportRowToString(table, key)` で、シートの `textType`・`translationInstructions` と、既存の場面・器・人間のコメントを読む。
+AIの調査結果（場面・器・グループ）は文脈として使い、人間が書いた情報を上書きする根拠にしない。
+
+## 禁止事項
+
+- 人間のコメント（`comment`）を作成・追記・変更・削除しない。空欄も埋めない。調査結果は場面・器・グループに保存し、要確認の事項は作業報告に書く。
+- 翻訳者担当の列（`translatorLanguages`）を変更しない。全行・空欄・今後追加する行が対象で、原文が変わっていても書き換えずに報告する。ロックの解除、アセットの直接編集による回避、`AllowTranslatorCellChanges` と `-localoAllowTranslatorChanges` の使用もしない。
+- 翻訳元の文章とキーを変更しない。原文が空欄の行は、他の言語から推測せずに報告する。
+- シートの翻訳方針・Translator Lock・Project Profile・Target Platforms・Project Lessons を変更しない。変えたほうがよい点は、文面の案を作業報告に示す。
+- 同梱データに無い機種・用語を推測で補わない。
+- CSVの取り込みで dry-run を省かない。`ImportComments = false`（batch mode では `-localoNoComments`）を必ず指定する。
+
+## 翻訳の手順
+
+1. `ExportToString()` で全体を読む。用語集は全体を読み、`notes` で意味と使い方を確認する。
+2. `translation-guide.md` の「全言語共通」と、翻訳先の言語の節を読む。
+3. 対象シート全体の原文と既存訳を読み、翻訳先の言語ごとに次の4つを決める。
+   1. 口調。敬語・呼称・語尾は、話者・相手・場面から決める。同じ相手との関係では揃え、相手や場面で意図して変わる箇所は保つ。別のシートの訳から話者の口調を流用しない。
+   2. 話者と読み手の年齢に合う語彙の範囲。
+   3. 作品を通して固定するキーワードと、対象言語で使う語。
+   4. 強調の手段（大文字・くり返しなど）と、1ページあたりの上限。
+4. 同じ言語の翻訳者の確定訳を、用語・言い回し・口調のお手本にする。近い文脈のものを優先し、話者の違うシートの口調は持ち込まない。
+5. 対象の行の場面や器が空なら、下の手順で調査する。
+6. 訳す。グループに属する行は `ExportGroupToString(group)` でまとめて取り出し、前後の行の流れと、問いと答えの対応（言い回し・敬語・呼称）を保つ。
+7. `translation-guide.md` の「自己レビュー」で見直し、登録された用語が守られているかを確認する。漢字の読み（音訓）が範囲内かどうかは機械的に調べられないので、ここで確認する。
+8. 下の「QA」を実行する。
+9. 作業報告を書く。
+
+仮の文字（原文が決まっていない文言の仮置き）や新しい文言を書くときも、同じ情報と優先順位に従う。
+
+### 作業報告に書くこと
+
+- 手順3で決めた、言語ごとの方針。
+- 要確認の行：Key・言語・理由・採用した訳・短い代案。意味が二通りに取れる、表示領域に収まるか分からない、情報どうしが食い違う、など。
+- 文のリズムや器のために省いた語・足した語。
+- 仮の文字を書いた行と、参考値（`reference`）の表記を採用した行。
+- 名前がだじゃれ・かばん語で用語集に無い場合の、音を写した表記と、しかけを再現した名前の案。
+- QAの結果と、直さずに残した指摘。
+- 実画面でのはみ出しと読みやすさは確認していないこと。人間に見てほしい箇所。
+
+### 翻訳者の確定訳から学ぶ
+
+翻訳者の確定訳が入ったシートでは、以前の訳との違いを読み、変えられた理由を推定して、同じ言語のほかのシートの訳に生かす。
+
+- 作品全体に当てはまる書き方は、Project Lessons へ追記する文面の案として作業報告に示す。人間が確認して貼り付ける。話者ごとの声はシートの方針、用語の表記は用語集の担当なので、この案に混ぜない。
+- 翻訳者が変えた用語・名前の古い表記が、ほかのシート・用語集・シートの翻訳方針に残っていれば、場所を報告する。
+
+## 行の文脈（場面と器）の調査手順
+
+人間がキーを指定して調査を依頼したときと、翻訳する行の場面や器が空のときに使う。
+
+1. `ExportRowToString(table, key)` で、シートの翻訳方針と、既存の場面・器・人間のコメントを読む。
 2. キーの使用箇所を探す。シーンとプレハブでは `LocalizeTextBase` 派生コンポーネントの `localizationKey`、コードでは `GetLocalizedString("KEY")` や `SetKey("KEY")` を検索する。キーが文字列の組み立てで作られている場合も考慮する。
 3. 場面を調べる：どの画面・シーンか、表示のきっかけと条件、誰に向けた文か、前後に表示される文章。
 4. 器を調べる：表示に使う部品、RectTransformのサイズ、フォントサイズ、Auto Size、折り返し・Overflowの設定、想定される行数、表示時間（自動で消える表示や字幕など）。
 5. 確認できた事実と推測を区別し、根拠（アセットのパス、コードの箇所）を添える。確認できないことは不明と書く。使用箇所が複数あれば、それぞれを書く。
-6. `SetRowContext` で保存し、調査したキーと要点を作業報告に書く。
+6. `LocaloTranslationContext.SetRowContext(table, key, scene, displaySpace)` で保存し、調査したキーと要点を作業報告に書く。`null` を渡した項目は変更されない。人間は、Tableの各行のCommentの右にある詳細アイコンから確認・修正する。
 
-### 行のグループ分けの調査手順
+## 行のグループ分けの調査手順
 
 人間がシートやプロジェクト全体のグループ分けを依頼したときに使う。
 
@@ -80,47 +136,39 @@ Treat `Packages/com.takashihamada.localo/` as the installed tool and `Assets/Loc
    - 1グループは、場面が変わるまでの1つの会話、または1つの画面の問いと答えにとどめる。章全体のような長い流れはグループにせず、場面（`aiScene`）に書く。
    - 1つの行が属せるグループは1つだけ。複数の流れで使い回すキー（共通のボタンや返事など）はグループに入れず、作業報告に挙げる。
 4. 確認できたものだけを登録する。根拠のない推測でグループにしない。不確かなものと、根拠（アセットのパス、コードの箇所）は作業報告に書く。
-5. `LocaloTranslationContext.SetRowGroups(new[] { new LocaloRowGroupAssignment(key, group, step), ... })` でまとめて保存する。1件でもキーが無い・位置の書式が違うと、何も保存されない。グループ名と位置を両方空にすると、その行をグループから外す。このAPIはコメント欄・翻訳文・場面・器・シートの設定を変更しない。
-6. `LocaloQa.RunAll()` を実行し、`groups` の指摘（片方だけの入力、書式違い、位置の重なり、1行だけのグループ）を直すか報告する。
+5. `LocaloTranslationContext.SetRowGroups(new[] { new LocaloRowGroupAssignment(key, group, step), ... })` でまとめて保存する。1件でもキーが無い・位置の書式が違うと、何も保存されない。グループ名と位置を両方空にすると、その行をグループから外す。
+6. QAの `groups` を実行し、指摘を直すか報告する。
 
-## 翻訳の長さと文脈
+## QA
 
-- 原文の意味・意図・使用場面・話者の性格や口調を保ち、前後の文章、シートの方針、人間のコメント、用語集に沿って訳す。同じ文脈では用語と言い回しを統一し、文脈が違う同じ語を機械的に同じ訳にしない。
-- 特にボタン・ラベルなど短いUI文言は、原文とおおむね同じ表示幅・行数に収まる簡潔な訳を目指す。原文にない説明を足して長くしない。
-- 文字数は表示幅の目安として扱う。言語やフォントによって幅が変わるため、文字数の完全一致や一律の倍率を必須にしない。人間が指定した表示領域・長さの制約があれば従う。
-- 短くするために重要な意味・条件・否定・口調を損なわない。文脈と長さを両立できない場合や、表示領域が不明で収まりに懸念がある場合は、Key・言語・理由・採用訳・短い代案を作業報告に示して人間の確認に回す。コメント欄には書き込まない。
-- 自己レビューで意味・文脈・用語・口調に加えて、原文に対して不必要に長くなっていないかを確認する。実画面でのはみ出しや読みやすさの確認は人間に引き継ぐ。
+`Localo.Editor.LocaloQa` は、訳文とアセットから機械的に判定できる問題を探す。人間が画面で実行するものではなく、必要なときに自分で実行する。
 
-## セリフの声を作る
+```csharp
+using Localo.Editor;
+using UnityEngine;
 
-セリフ・手紙・ナレーションなど、話者のいる文章に使う。詳しい注意点は `languageGuidelines` の `commonPoints` と対象言語の `points` にある。
+string all = LocaloQa.Report();
+string mine = LocaloQa.Report(keys: new[] { "KEY_A", "KEY_B" }, languages: new[] { SystemLanguage.Korean });
+string project = LocaloQa.Report(checkIds: new[] { "missing-key", "legacy-text-usage", "line-break-settings" });
+string checks = LocaloQa.DescribeChecks();
+```
 
-- 意味が合っているだけの訳で止めない。訳文を声に出したとき、その話者が、その場面で、対象言語で本当に言いそうかを確認する。
-- 訳す前に、シートごとに次の4つを決め、作業報告に書く。
-  1. 話者と読み手の年齢に合う語彙の範囲。
-  2. 作品を通して固定するキーワードと、対象言語で使う語。
-  3. 強調の手段（大文字・くり返しなど）と、1ページあたりの上限。
-  4. 口調が変わる箇所と、その表し方。
-- 名前がだじゃれ・かばん語なら、用語集の正式表記を確認する。未登録なら、音を写した表記と、しかけを再現した名前の案を並べて人間に確認する。
-- 改行は原文の位置を写さず、ページ（空行で分けた表示の単位）の中で対象言語の文として流し直す。ページ数と各ページの内容は保つ。行の長さは `aiDisplaySpace` の目安より短めにそろえる。
-- 翻訳者の確定訳が入ったシートでは、以前の訳との違いを読み、変えられた理由を推定して、同じ言語のほかのシートの訳に生かす。作品全体に当てはまるものは、Project Lessonsへ追記する文面の案として作業報告に示す。翻訳者が変えた用語・名前の古い表記が、ほかのシート・用語集・シートの翻訳方針に残っていれば、場所を報告する。翻訳者担当の列と人間の方針欄は書きかえない。
+- `Report` は、先頭に重大度ごとの件数、続けて1件1行で指摘を返す。`keys` と `languages` は、表の行を指す指摘だけを絞る。アセットや設定を指す指摘は絞らない。
+- `DescribeChecks` は、チェックのIdと、何を調べて何が対象外かの説明を返す。初めて使うときに読む。
+- Editorを開いていないときは `Unity -batchmode -quit -projectPath <project> -executeMethod Localo.Editor.LocaloQaCommandLine.Run` を使う。引数は `-localoQaChecks a,b`、`-localoQaKeys A,B`、`-localoQaLanguages Japanese,Korean`、`-localoQaOut <path>`（すべて省略可）。Error があると終了コード1になる。
 
-自己レビューでは次も確認する。
+| いつ | 何を実行するか |
+| --- | --- |
+| 訳文を書いた・直した後 | 変えたキーと言語に絞って `Report` |
+| 文字を出す部品・シーン・プレハブ・キーを使うコードを変えた後 | `missing-key`、`legacy-text-usage`、`line-break-settings` |
+| フォントや有効な言語を変えた後 | `missing-glyph` |
+| グループ分けを保存した後 | `groups` |
+| 作業報告の前 | 全部 |
 
-- 話者の年齢で使わない語が入っていないか。
-- 固定すると決めたキーワードが、別の語に言いかえられていないか。
-- 原文の改行位置をそのまま写して、行の長さがふぞろいになっていないか。
-- ページ数が原文と同じか（QAの `page-count`）。ページをまたぐ文に「続く」しるしがあるか。
-- 強調（大文字など）が1ページに3か所以上ないか。
-- 口調が、方針に書かれた箇所以外で変わっていないか。
-- ラテン文字の言語の訳文に、全角スペース・全角記号が残っていないか（QAの `punctuation`）。
-
-## 翻訳者担当のシートと言語
-
-- TranslationタブのTranslator Lockは、シートごとの `LocalizationTable.translatorLanguages` に保存される。指定された言語の列全体は翻訳者担当。AIは全行・空欄・今後追加する行も変更しない。アセット直接編集による回避も禁止する。人間からロック設定の変更を明示的に依頼された場合以外は、この設定を変更しない。
-- コンテキストJSONの各シートの `translatorLanguages` を確認し、対象言語をAIの翻訳対象から外す。原文が変わっていても、ロックされた訳は書き換えず人間に報告する。
-- `translatorExamples` は全シートから集めた翻訳者のお手本であり変更対象ではない。行単位のJSONにも含まれる。各例の `translatorLanguages` に該当する入力済みの訳を、同じ言語・近い文脈の用語・言い回し・口調のお手本として優先的に参照する。他の言語の訳は参考例として区別する。シートの方針や話者の違いを考慮し、用語集・人間の指示と矛盾する場合は報告する。
-- CSV取り込みは既定で翻訳者担当の列への変更をerrorにし、全体を中止する。AIは `AllowTranslatorCellChanges` をtrueにせず、`-localoAllowTranslatorChanges` を使わない。人間が翻訳者の納品CSVを取り込む場合や、確定訳の修正を明示的に行う場合のための指定である。人間はTableで文章を修正できる。
+- Error は実行時に壊れるので直す。Warning は直すか、理由を添えて報告する。Info は意図どおりかを判断する。
+- 指摘を消すために、翻訳者担当の列と人間のコメントを書き換えない。報告する。
+- 漢字の範囲の指摘は、かなに開くか、範囲内の語に言い換えて直す。
+- 画面の見た目（はみ出し・読みやすさ）は調べられない。人間に引き継ぐ。
 
 ## CSV review workflow
 
@@ -129,16 +177,15 @@ Use `Localo.Editor.LocaloCsv` (editor-only, no UI) when translations are reviewe
 1. Export: `LocaloCsv.ExportToFile(path)`. Keep this file unchanged as the baseline.
 2. The reviewer edits a copy. Columns: `Table`, `Key`, enabled languages (display names), `Comment`.
 3. Always dry-run first: `LocaloCsv.ImportFromFile(reviewedPath, new LocaloCsvImportOptions { DryRun = true, BaselineCsvPath = path, ImportComments = false })`, then read `report.ToString()`.
-4. Limit columns to what the reviewer was asked to change with `Languages`. AIが実行する取り込みでは、dry-run・本番ともに `ImportComments = false` を必ず指定する。batch modeでは `-localoNoComments` を必ず付ける。
+4. Limit columns to what the reviewer was asked to change with `Languages`.
 5. Check skipped keys, conflicts, and placeholder warnings with the human, then run the same call without `DryRun`.
 
-Reviewers must save as UTF-8 (Google Sheets, or Excel "CSV UTF-8"); Excel can also turn `+{0}`-style cells into formulas, so review the dry-run list. Import overwrites existing keys cell by cell, never deletes rows, skips unknown keys unless `AddMissingKeys = true`, and writes nothing when any error is reported. When the Editor is closed, use `-executeMethod Localo.Editor.LocaloCsvCommandLine.Export|Import` with `-localoCsv <path>`.
+Reviewers must save as UTF-8 (Google Sheets, or Excel "CSV UTF-8"); Excel can also turn `+{0}`-style cells into formulas, so review the dry-run list. Import overwrites existing keys cell by cell, never deletes rows, skips unknown keys unless `AddMissingKeys = true`, and writes nothing when any error is reported. A change to a translator-locked column is an error; a human who imports a translator's delivery sets `AllowTranslatorCellChanges` themselves. When the Editor is closed, use `-executeMethod Localo.Editor.LocaloCsvCommandLine.Export|Import` with `-localoCsv <path>`.
 
 ## Runtime integration
 
 - Bind Canvas TMP text with `LocalizeTextMeshProUGUI` and 3D TMP text with `LocalizeTextMeshPro`.
 - 新しく作る文字表示に legacy Text（`UnityEngine.UI.Text`）と `TextMesh` を使わない。legacy Text には行頭禁則の機能が無く、日本語・中国語を折り返すと「、」「。」が行頭に来る。UGUI は `TextMeshProUGUI`、3D は `TextMeshPro`、UI Toolkit は `Label` を使う。UI Toolkit では、`PanelSettings.textSettings` に Line Breaking Rules を割り当てた Panel Text Settings を渡す（未割り当てだと禁則が効かない）。
-- 手で入れた改行（`<br>`）は禁則の対象外。改行の直後が「、」「。」などで始まらないように訳す。
 - Do not place `LocaloManager` manually; it bootstraps before the first scene.
 - Switch language with `LocaloManager.Instance.SetLanguage(...)` and fetch dynamic text with `GetLocalizedString(...)`.
 - Keep platform-specific language adapters in the consuming project. The public package boundary is `LocaloManager.SetSystemLanguageProvider(...)`.
@@ -148,7 +195,7 @@ Reviewers must save as UTF-8 (Google Sheets, or Excel "CSV UTF-8"); Excel can al
 
 1. Compile with the Unity workflow documented by the project and confirm zero errors.
 2. Verify registered tables, enabled language columns, and unique keys after data edits.
-   After changing translations or text UI, run `Localo.Editor.LocaloQa.RunAll()` (the same checks as the QA tab) and fix or report each Warning and Error. Do not rewrite translator-locked columns to fix an issue; report it instead.
-3. In Play Mode, switch languages at least twice and confirm bound and dynamic text updates.
-4. Confirm Console errors are zero, then stop Play Mode.
-5. Hand visual quality and interactive feel checks to a human with specific items to inspect.
+3. Run the QA above for what you changed.
+4. In Play Mode, switch languages at least twice and confirm bound and dynamic text updates.
+5. Confirm Console errors are zero, then stop Play Mode.
+6. Hand visual quality and interactive feel checks to a human with specific items to inspect.

@@ -13,7 +13,6 @@ namespace Localo.Editor
     internal sealed class LocaloQaMissingTranslationCheck : ILocaloQaCheck
     {
         public string Id => "missing-translation";
-        public string Title => "Missing Translations";
         public string Description =>
             "原文（Source Language）がある行で、有効な言語の訳が空欄（空白だけを含む）のものを探します。" +
             "原文が空の行と、原文の列は対象外です。";

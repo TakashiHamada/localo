@@ -17,14 +17,55 @@ namespace Localo.Tests
 
             string skillPath = $"{info.assetPath}/Editor/Resources/LocaloProjectSkillTemplate.txt";
             string metadataPath = $"{info.assetPath}/Editor/Resources/LocaloProjectSkillOpenAiTemplate.txt";
+            string guidePath = $"{info.assetPath}/Editor/Resources/LocaloTranslationGuideTemplate.txt";
             Assert.That(AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>(skillPath), Is.Not.Null);
             Assert.That(AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>(metadataPath), Is.Not.Null);
+
+            // 翻訳ガイドは、全言語共通の節と、言語別ガイドの対象の8言語の節を持つ。
+            var guide = AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>(guidePath);
+            Assert.That(guide, Is.Not.Null);
+            StringAssert.Contains("## 全言語共通", guide.text);
+            foreach (string heading in new[]
+                     {
+                         "### English：", "### Korean：", "### ChineseSimplified：", "### ChineseTraditional：",
+                         "### German：", "### French：", "### Spanish：", "### Portuguese："
+                     })
+                StringAssert.Contains(heading, guide.text);
+            foreach (string locale in new[] { "en-US", "ko-KR", "zh-CN", "zh-TW", "de-DE", "fr-FR", "es-419", "pt-BR" })
+                StringAssert.Contains(locale, guide.text);
+        }
+
+        [Test]
+        public void AiSkill_IsTheOnlyHomeOfTranslationRules()
+        {
+            PackageInfo info = PackageInfo.FindForAssembly(typeof(LocaloEditorWindow).Assembly);
+            string skill = AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>(
+                $"{info.assetPath}/Editor/Resources/LocaloProjectSkillTemplate.txt").text;
+
+            // Skillは、コンテキストJSONの版、翻訳ガイド、QAの入口を指している。
+            StringAssert.Contains($"schema version {LocaloTranslationContext.SchemaVersion}", skill);
+            StringAssert.Contains("translation-guide.md", skill);
+            StringAssert.Contains("LocaloQa.Report", skill);
+            // SkillがQAの使いどきに挙げるチェックは、実在するIdである。
+            foreach (string checkId in new[] { "missing-key", "legacy-text-usage", "line-break-settings", "missing-glyph", "groups" })
+            {
+                StringAssert.Contains($"`{checkId}`", skill);
+                Assert.That(LocaloQa.CheckIds, Does.Contain(checkId));
+            }
+
+            // 翻訳ガイドの自己レビューが挙げるチェックも、実在するIdである。
+            string guide = AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>(
+                $"{info.assetPath}/Editor/Resources/LocaloTranslationGuideTemplate.txt").text;
+            foreach (string checkId in new[] { "page-count", "punctuation" })
+            {
+                StringAssert.Contains($"`{checkId}`", guide);
+                Assert.That(LocaloQa.CheckIds, Does.Contain(checkId));
+            }
         }
 
         [Test]
         public void BundledData_LoadsFromInstalledPackage()
         {
-            Assert.That(LocaloLanguageGuidelines.Load().languages, Is.Not.Empty);
             Assert.That(LocaloPlatformTerms.Load().platforms, Is.Not.Empty);
             ProjectProfileOptionsCatalog profile = LocaloProjectProfileOptions.Load();
             Assert.That(profile.audiences, Is.Not.Empty);
@@ -32,7 +73,7 @@ namespace Localo.Tests
             foreach (ProjectProfileAudience audience in profile.audiences)
                 Assert.That(System.Array.Exists(profile.kanjiRanges, range => range.id == audience.kanjiRange), audience.id);
             // 画面の英語名・メッセージ用の日本語名・AI向けの指針がそろっている。
-            foreach (ProjectProfileOption option in profile.audiences.Cast<ProjectProfileOption>().Concat(profile.genres)
+            foreach (ProjectProfileOption option in profile.audiences.Cast<ProjectProfileOption>()
                          .Concat(profile.tones).Concat(profile.kanjiRanges))
             {
                 Assert.That(option.name, Is.Not.Empty, option.id);
@@ -56,7 +97,7 @@ namespace Localo.Tests
                 Assert.That(settings.languageLessons, Is.Empty);
                 Assert.That(LocaloProjectProfileOptions.CreateContext(settings), Is.Null);
                 Assert.That(UnityEngine.JsonUtility.FromJson<SchemaOnly>(LocaloTranslationContext.ExportToString(settings)).schemaVersion,
-                    Is.EqualTo(8));
+                    Is.EqualTo(LocaloTranslationContext.SchemaVersion));
             }
             finally { UnityEngine.Object.DestroyImmediate(settings); }
         }

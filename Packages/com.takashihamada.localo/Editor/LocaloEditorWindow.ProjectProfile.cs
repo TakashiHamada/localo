@@ -1,8 +1,8 @@
 // =============================================================================
-// LocaloEditorWindow.ProjectProfile.cs — Setup の Project Profile と Target Platforms
+// LocaloEditorWindow.ProjectProfile.cs — Translation タブの Project Profile と Target Platforms
 // =============================================================================
 // 作品全体の対象プレイヤー・雰囲気と、対象の機種を選ぶ。選択肢と指針文は同梱のJSONにあり、
-// 設定アセットにはIDだけを保存する。選んだ内容はAI向けJSON・言語ガイドのプレビュー・QAに使う。
+// 設定アセットにはIDだけを保存する。選んだ内容はAI向けJSONとQAに使う。
 // =============================================================================
 
 using System;
@@ -31,8 +31,6 @@ namespace Localo.Editor
 
             string audience = DrawOptionPopup(new GUIContent("Audience", "作品の対象年齢層です。"),
                 profile.audience, catalog.audiences, "(none)");
-            List<string> genres = DrawOptionMask(new GUIContent("Genre", "作品のジャンルです。複数選べます。"),
-                profile.genres, catalog.genres);
             List<string> tones = DrawOptionMask(new GUIContent("Tone", "作品全体の雰囲気です。複数選べます。"),
                 profile.tones, catalog.tones);
 
@@ -43,29 +41,42 @@ namespace Localo.Editor
                     range.id == catalog.audiences.FirstOrDefault(option => option.id == audience)?.kanjiRange);
                 string autoLabel = automatic != null ? $"Match Audience ({automatic.name})" : "Match Audience (none)";
                 kanjiRange = DrawOptionPopup(new GUIContent("Japanese Kanji",
-                        "日本語に使う漢字の範囲です。Match Audienceでは対象年齢に合わせます。QAのKanji Rangeで確認できます。"),
+                        "日本語に使う漢字の範囲です。Match Audienceでは対象年齢に合わせます。"),
                     kanjiRange, catalog.kanjiRanges, autoLabel);
             }
 
             bool changed = audience != (profile.audience ?? string.Empty) ||
                            kanjiRange != (profile.kanjiRange ?? string.Empty) ||
-                           !genres.SequenceEqual(profile.genres ?? new List<string>()) ||
                            !tones.SequenceEqual(profile.tones ?? new List<string>());
             if (changed)
             {
                 Undo.RecordObject(_settings, "Change Localo Project Profile");
                 _settings.projectProfile = new LocaloProjectProfile
                 {
-                    audience = audience, genres = genres, tones = tones, kanjiRange = kanjiRange
+                    audience = audience, tones = tones, kanjiRange = kanjiRange
                 };
                 EditorUtility.SetDirty(_settings);
                 AssetDatabase.SaveAssetIfDirty(_settings);
             }
 
+            DrawSelectedProfileGuidance();
             EditorGUILayout.HelpBox(
-                "作品全体の対象プレイヤーと雰囲気を選びます。AI向けJSONに指針として入り、各言語の翻訳や仮の文字の口調・語彙・表記の基準になります。" +
-                "選んだ内容と指針は、TranslationタブのLanguage Guidelinesで確認できます。シートごとの方針はTranslationタブに記入します。",
+                "作品全体の対象プレイヤーと雰囲気を選びます。上の指針がAI向けJSONに入り、各言語の翻訳や仮の文字の口調・語彙・表記の基準になります。\n" +
+                "漢字の範囲は、QAの kanji-range でも使います。",
                 MessageType.None);
+        }
+
+        // 選んだ項目についてAIに渡す指針を、その場で読めるように並べる。
+        private void DrawSelectedProfileGuidance()
+        {
+            ProjectProfileContext context = LocaloProjectProfileOptions.CreateContext(_settings);
+            if (context == null) return;
+            var selected = new List<ProjectProfileOption>();
+            if (context.audience != null) selected.Add(context.audience);
+            selected.AddRange(context.tones);
+            if (context.japaneseKanjiRange != null) selected.Add(context.japaneseKanjiRange);
+            foreach (ProjectProfileOption option in selected)
+                EditorGUILayout.LabelField($"• {option.name}: {option.guidance}", EditorStyles.wordWrappedMiniLabel);
         }
 
         private void DrawTargetPlatformsSection()
@@ -94,7 +105,7 @@ namespace Localo.Editor
             }
 
             EditorGUILayout.HelpBox(
-                "選んだ機種のボタン名・機能名の公式表記を、AI向けJSONとQAのPlatform Termsに使います。一覧はGlossaryタブの「Platform Terms」で確認できます。\n" +
+                "選んだ機種のボタン名・機能名の公式表記を、AI向けJSONと、QAの platform-terms に使います。\n" +
                 "公開されている製品ページの表記です。ロットチェックなどの用語規定ではありません。正式な用語集がある場合はGlossaryに記入してください（Glossaryが優先されます）。",
                 MessageType.None);
         }

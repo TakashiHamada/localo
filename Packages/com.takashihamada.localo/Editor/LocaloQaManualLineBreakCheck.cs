@@ -14,7 +14,6 @@ namespace Localo.Editor
     internal sealed class LocaloQaManualLineBreakCheck : ILocaloQaCheck
     {
         public string Id => "manual-line-break-kinsoku";
-        public string Title => "Manual Line Breaks";
         public string Description =>
             "手で入れた改行（<br>・\\n）の直後が「、」「。」や閉じかっこなどで始まる訳文と、改行の直前が開きかっこで終わる訳文を探します。" +
             "手で入れた改行には、TextMesh Pro や UI Toolkit の禁則処理が効きません。自動の折り返しはこのチェックの対象外です。";

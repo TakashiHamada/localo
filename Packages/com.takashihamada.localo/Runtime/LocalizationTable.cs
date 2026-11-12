@@ -6,7 +6,7 @@ using UnityEngine.Serialization;
 namespace Localo.Runtime
 {
     /// <summary>
-    /// Translation data table (shown as a "sheet" in the editor). A sheet is one kind of text in one voice
+    /// Translation data table (shown as a "sheet" in the editor). A sheet is text in one voice
     /// (speaker and tone): split sheets when the speaker or the base tone changes, not per screen.
     /// Holds per-language text and a comment for each translation key (<see cref="LocalizationRow.key"/>).
     /// </summary>
@@ -14,10 +14,7 @@ namespace Localo.Runtime
     public class LocalizationTable : ScriptableObject
     {
         [Header("-- Translation Context --")]
-        [Tooltip("このシートに並ぶ文章の種類。シートの大きい文脈としてAIに渡します。")]
-        public LocaloTextType textType = LocaloTextType.Unspecified;
-
-        [Tooltip("AIに渡すシート全体の翻訳方針。話者、性格、口調などシートの声を自由に記述します。")]
+        [Tooltip("AIに渡すシート全体の翻訳方針。文章の種類と、話者、性格、口調などシートの声を自由に記述します。")]
         [TextArea(4, 12)]
         public string translationInstructions = string.Empty;
 
@@ -86,21 +83,6 @@ namespace Localo.Runtime
                 }
             }
         }
-    }
-
-    /// <summary>
-    /// Kind of text a sheet holds. Values are serialized, so never renumber them.
-    /// </summary>
-    public enum LocaloTextType
-    {
-        Unspecified = 0,
-        Interface = 1,
-        SystemMessage = 2,
-        Description = 3,
-        Dialogue = 4,
-        InWorld = 5,
-        Name = 6,
-        External = 7
     }
 
     /// <summary>

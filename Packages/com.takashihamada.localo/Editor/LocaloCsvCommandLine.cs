@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 
 namespace Localo.Editor
@@ -19,83 +16,31 @@ namespace Localo.Editor
     {
         public static void Export()
         {
-            Run(() =>
+            LocaloCommandLine.Run(() =>
             {
-                Debug.Log("[Localo] " + LocaloCsv.ExportToFile(RequireArgument("-localoCsv")));
+                Debug.Log("[Localo] " + LocaloCsv.ExportToFile(LocaloCommandLine.RequireArgument("-localoCsv")));
                 return true;
             });
         }
 
         public static void Import()
         {
-            Run(() =>
+            LocaloCommandLine.Run(() =>
             {
                 var options = new LocaloCsvImportOptions
                 {
-                    DryRun = HasFlag("-localoDryRun"),
-                    ImportComments = !HasFlag("-localoNoComments"),
-                    AllowTranslatorCellChanges = HasFlag("-localoAllowTranslatorChanges"),
-                    AddMissingKeys = HasFlag("-localoAddMissingKeys"),
-                    BaselineCsvPath = GetArgument("-localoBaselineCsv"),
-                    Languages = ParseLanguages(GetArgument("-localoLanguages")),
+                    DryRun = LocaloCommandLine.HasFlag("-localoDryRun"),
+                    ImportComments = !LocaloCommandLine.HasFlag("-localoNoComments"),
+                    AllowTranslatorCellChanges = LocaloCommandLine.HasFlag("-localoAllowTranslatorChanges"),
+                    AddMissingKeys = LocaloCommandLine.HasFlag("-localoAddMissingKeys"),
+                    BaselineCsvPath = LocaloCommandLine.GetArgument("-localoBaselineCsv"),
+                    Languages = LocaloCommandLine.GetLanguages("-localoLanguages"),
                 };
-                LocaloCsvReport report = LocaloCsv.ImportFromFile(RequireArgument("-localoCsv"), options);
+                LocaloCsvReport report = LocaloCsv.ImportFromFile(LocaloCommandLine.RequireArgument("-localoCsv"), options);
                 if (report.Success) Debug.Log("[Localo] " + report);
                 else Debug.LogError("[Localo] " + report);
                 return report.Success;
             });
-        }
-
-        private static void Run(Func<bool> action)
-        {
-            bool success;
-            try
-            {
-                success = action();
-            }
-            catch (Exception exception)
-            {
-                Debug.LogError("[Localo] " + exception);
-                success = false;
-            }
-
-            if (Application.isBatchMode) EditorApplication.Exit(success ? 0 : 1);
-        }
-
-        private static IReadOnlyCollection<SystemLanguage> ParseLanguages(string value)
-        {
-            if (string.IsNullOrEmpty(value)) return null;
-
-            var languages = new List<SystemLanguage>();
-            foreach (string name in value.Split(','))
-            {
-                if (!LocaloCsv.TryParseLanguage(name, out SystemLanguage language))
-                    throw new ArgumentException($"Unknown language \"{name.Trim()}\" in -localoLanguages.");
-                languages.Add(language);
-            }
-            return languages;
-        }
-
-        private static string RequireArgument(string name)
-        {
-            string value = GetArgument(name);
-            if (string.IsNullOrEmpty(value)) throw new ArgumentException($"Missing required argument {name} <path>.");
-            return value;
-        }
-
-        private static string GetArgument(string name)
-        {
-            string[] args = Environment.GetCommandLineArgs();
-            for (int i = 0; i < args.Length - 1; i++)
-            {
-                if (args[i] == name) return args[i + 1];
-            }
-            return null;
-        }
-
-        private static bool HasFlag(string name)
-        {
-            return Array.IndexOf(Environment.GetCommandLineArgs(), name) >= 0;
         }
     }
 }

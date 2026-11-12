@@ -20,7 +20,6 @@ namespace Localo.Editor
         };
 
         public string Id => "tag-mismatch";
-        public string Title => "Tag Mismatch";
         public string Description =>
             "原文と訳で、<color> <b> <size> などのタグの種類や数が違う行と、訳の中で閉じ忘れたタグを探します。" +
             "属性の値と、<br> や <sprite> など単独で使うタグの数は比べません。訳が空欄の行は対象外です。";

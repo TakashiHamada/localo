@@ -616,7 +616,7 @@ namespace Localo.Editor
             }
         }
 
-        // QAタブの Placeholder Mismatch と同じ判定を使う。
+        // QAの Placeholder Mismatch と同じ判定を使う。
         private static string PlaceholderSignature(string text) => LocaloTextPatterns.PlaceholderSignature(text);
 
         private static string Describe(string signature) => signature.Length == 0 ? "(none)" : signature;

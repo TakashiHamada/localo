@@ -69,51 +69,82 @@ Keep platform SDK code in the consuming project. Localo itself only depends on U
 
 ## Editor tabs
 
-The **Window > Localo** window has five tabs in this order: Setup → Glossary → Table → Translation → QA. The `?` button at the right end of the toolbar opens the Localo Guide window with all shortcuts.
+The **Window > Localo** window has four tabs: Setup → Glossary → Table → Translation. The `?` button at the right end of the toolbar opens the Localo Guide window with the workflow summary and all shortcuts.
 
-- **Setup**: create the settings, choose the Source Language, set the **Project Profile** and **Target Platforms**, register tables (sheets), choose languages and column widths, install the AI project skill.
-- **Glossary**: edit project-wide terms in the same grid as Table, using **Source Term**, language columns, and **Notes**. Search, keyboard editing and TSV clipboard operations work the same as Table; each tab keeps its own search, selection and scroll position. Visible languages, column order and widths are shared. Use the selected source language for Source Term (the term or row identifier), and enter actual official text in each language column. The rightmost × deletes the term; Undo restores it. Existing glossary data is retained. AI instructions require reading the whole glossary before translation and checking terminology afterward. **Platform Terms** opens a read-only window with the bundled official button and feature names for the selected target platforms.
-- **Table**: edit keys, translations and the human `Comment` in a keyboard-first grid. The icon right of `Comment` (the details icon) opens the row's AI-researched Scene and Display Space.
-- **Translation**: per sheet, choose the Text Type, write the Translation Guidelines (speaker, personality, tone), and set the **Translator Lock**. Locked language columns are shown with `■` in the Table tab and are never changed by AI. **Language Guidelines** previews read-only guidance for eight target languages, including their target regions; common rules and sources are collapsible. **Copy All Context as JSON** includes the same guidance for enabled languages alongside the context for AI translation (`Localo.Editor.LocaloTranslationContext`, schema version 6). The Language Guidelines preview starts with the Project Profile and its guidance. **Project Lessons** (inside Language Guidelines) holds free-form notes per language for what this game has settled on in that language, such as lessons from translator revisions; they apply to every sheet, are exported as `languageLessons` in the context JSON, and take priority over the bundled guidelines. AI never edits them.
+- **Setup**: create the settings, choose the Source Language, register tables (sheets), choose languages and column widths, install the AI project skill.
+- **Glossary**: edit project-wide terms in the same grid as Table, using **Source Term**, language columns, and **Notes**. Search, keyboard editing and TSV clipboard operations work the same as Table; each tab keeps its own search, selection and scroll position. Visible languages, column order and widths are shared. Write the Source Term (the term or row identifier) in the source language, and enter the official text in each language column. The rightmost × deletes the term; Undo restores it.
+- **Table**: edit keys, translations and the human `Comment` in a keyboard-first grid. The icon right of `Comment` (the details icon) opens the row's AI-researched Group, Scene and Display Space.
+- **Translation**: what humans write for translation, in two scopes.
+  - **Project** (all sheets): the **Project Profile** (audience, tones, Japanese kanji range), the **Target Platforms**, and the **Project Lessons** (free-form notes per target language for what this game has settled on in that language, such as lessons from translator revisions).
+  - **Sheet**: the **Translation Guidelines** (kind of text, speaker, personality, tone) and the **Translator Lock**. Locked language columns are shown with `■` in the Table tab and are never changed by AI.
 
-- **QA**: run mechanical text checks. **Run All** runs every registered check in one go; each check also has its own **Run** button. Click an issue's location to jump to the Table cell, ping the scene or prefab, or open the script at that line. Checks never render the screen; visual quality stays a human check.
+## Where each kind of knowledge lives
+
+Each kind of knowledge has exactly one home. Humans write on screen; AI uses the skill and editor APIs.
+
+| Knowledge | Home | Written by |
+|---|---|---|
+| How AI works: steps, priorities, prohibitions | Project skill `SKILL.md` | Package |
+| Translation craft, common and per language | Project skill `translation-guide.md` | Package |
+| Mechanical text QA | `LocaloQa` API; the skill says when to run it | Package |
+| Official platform wording, kanji grades | Bundled JSON (`Editor/Resources`) | Package |
+| The whole game: audience, tone, per-language lessons | Translation tab > Project | Human |
+| Terms | Glossary tab | Human |
+| A sheet's voice | Translation tab > Sheet | Human |
+| A row's memo | `Comment` column | Human |
+| A row's scene, display space and group | Localo Details | AI, checked by a human |
+
+## Context for AI translation
+
+`Localo.Editor.LocaloTranslationContext` exports the data AI needs as JSON (schema version 9). The JSON holds data only; how to read it and how to translate are in the project skill.
+
+```csharp
+using Localo.Editor;
+
+string all = LocaloTranslationContext.ExportToString();            // every sheet and row, plus project-wide data
+string group = LocaloTranslationContext.ExportGroupToString("MY_GROUP");
+string row = LocaloTranslationContext.ExportRowToString(table, "MY_KEY");
+LocaloTranslationContext.SetRowContext(table, "MY_KEY", sceneText, displaySpaceText);
+LocaloTranslationContext.SetRowGroups(new[] { new LocaloRowGroupAssignment("MY_KEY", "MY_GROUP", "2-A") });
+```
+
+- The full export contains `sourceLanguage`, `glossary`, `projectProfile`, `languageLessons`, `platformTerms`, `groups` and every sheet with its `translationInstructions`, `translatorLanguages` and rows (`translations`, `humanComment`, `aiScene`, `aiDisplaySpace`, `aiGroup`, `aiGroupStep`).
+- Row and group exports contain only the target rows plus the glossary, Project Profile and Project Lessons. A row export includes the row's whole group and marks the target with `focusKey`.
+- Translator examples are the filled cells of the columns listed in each sheet's `translatorLanguages`.
+- **Copy All Context as JSON** on the Translation tab copies the full export.
+- `SetRowContext` saves a row's scene and display space (`null` leaves a field unchanged). `SetRowGroups` saves groups in bulk and writes nothing when any assignment is invalid. Both support Undo and never touch comments or translations.
+
+A sheet is one voice: split sheets when the speaker or the base tone changes. Rows shown in sequence (one conversation, or one screen's question and answers) form a group across sheets; a step alternates numbers and branch letters (`1`, `2`, `2-A`, `2-A-1`, `2-B`, `3`). The Table tab tints rows of the same group with the same color.
 
 ### Project Profile and Target Platforms
 
-**Project Profile** (Setup) sets the audience, genres, tones and, when Japanese is enabled, the Japanese kanji range for the whole game. The kanji range follows the audience unless chosen explicitly. Only option ids are saved in `LocalizationSettings.projectProfile`; the options and the guidance text given to AI live in the package (`Editor/Resources/LocaloProjectProfileOptions.json`), so options can be reordered or reworded without breaking existing settings. The context JSON includes the selected options with their guidance as `projectProfile`, and the AI skill uses it as the baseline for translations and placeholder text.
+**Project Profile** sets the audience, tones and, when Japanese is enabled, the Japanese kanji range for the whole game. The kanji range follows the audience unless chosen explicitly. Only option ids are saved in `LocalizationSettings.projectProfile`; the options and the guidance text given to AI live in the package (`Editor/Resources/LocaloProjectProfileOptions.json`). The guidance for the selected options is shown below the fields.
 
-**Target Platforms** (Setup) selects platforms whose official button and feature names are bundled in `Editor/Resources/LocaloPlatformTerms.json` (currently Nintendo Switch 2). The data comes from public product pages only, not from developer terminology guidelines such as lotcheck; enter terms from official guidelines in the project Glossary, which takes priority. Simplified Chinese entries are marked `reference` because there is no official Simplified Chinese page. The context JSON includes the terms for enabled languages as `platformTerms`.
+**Target Platforms** selects platforms whose official button and feature names are bundled in `Editor/Resources/LocaloPlatformTerms.json` (currently Nintendo Switch 2). The data comes from public product pages only, not from developer terminology guidelines such as lotcheck; enter terms from official guidelines in the project Glossary, which takes priority. Simplified Chinese entries are marked `reference` because there is no official Simplified Chinese page.
 
-### QA checks
+## QA for AI and automation
 
-The same checks are available from code: `Localo.Editor.LocaloQa.RunAll()` returns every issue (severity, check id, message, location), and `LocaloQa.Run(checkId)` runs one check. Add a check by implementing `ILocaloQaCheck` and registering it in `LocaloQa.Checks`; the QA tab shows it automatically.
+`Localo.Editor.LocaloQa` finds text problems that can be judged mechanically from the tables and assets. It has no window: AI runs it when needed (the project skill says when) and reports the result. Checks never render the screen; visual quality stays a human check.
 
-Checks that compare a translation with its source use the Source Language selected on the Setup tab, and skip rows whose source text is empty. Severity: **Error** breaks at runtime, **Warning** is likely visible on screen, **Info** may be intentional.
+```csharp
+using Localo.Editor;
+using UnityEngine;
 
-| Check | Id | What it finds |
-|---|---|---|
-| Missing Translations | `missing-translation` | Rows with source text whose translation in an enabled language is empty or whitespace only. Warning. |
-| Missing Keys | `missing-key` | Keys used by Localo components in scenes and prefabs (`localizationKey`, including prefab overrides) and by `GetLocalizedString("KEY")`, `SetKey("KEY")` and `LocaloDatabase.GetText("KEY", …)` in scripts that no registered table contains. At runtime the key itself is displayed. Keys built from strings cannot be checked. Error. |
-| Placeholder Mismatch | `placeholder-mismatch` | Translations whose `{0}`-style placeholders differ from the source (order and duplicates are ignored; the same rule as CSV import warnings). Error. |
-| Tag Mismatch | `tag-mismatch` | Translations whose rich text tags (names and open/close counts) differ from the source, and unbalanced tags. Attribute values (`<color=red>` vs `<color=#f00>`) and standalone tags such as `<br>` and `<sprite>` are not compared. Warning. |
-| Invalid Characters | `invalid-character` | Control characters other than `\n` (tabs, `\r`), U+FFFD, zero-width characters and bidirectional controls in any language. NBSP and the ideographic space are allowed. Warning. |
-| Missing Glyphs | `missing-glyph` | Characters that the TMP default font asset, its fallbacks and the global TMP fallbacks cannot draw (shown as □). Dynamic font assets are checked against their source font file without being modified. Fonts set per text, UI Toolkit fonts and legacy Text fonts are not covered. Warning. |
-| Manual Line Breaks | `manual-line-break-kinsoku` | Translations where a manual line break (`<br>`, `\n`) is followed by a character that must not start a line (`、` `。` `，` closing brackets, small kana, `,` `.` …) or preceded by one that must not end a line (opening brackets). Rich text tags are skipped. Line-breaking rules of TMP and UI Toolkit do not apply to manual breaks. |
-| Page Count | `page-count` | Translations whose number of pages differs from the source. A page is a block separated by a blank line (two or more consecutive `<br>` / `\n`). Line breaks inside a page are not compared, so lines can be reflowed for the target language. Warning. |
-| Whitespace | `whitespace` | Translations whose leading or trailing whitespace (presence only) differs from the source, which shifts centered or right-aligned text (Warning); leading or trailing whitespace in the source itself and double spaces not in the source (Info). |
-| Punctuation | `punctuation` | Punctuation that does not fit the language: half-width `,` `?` `!` `:` `;` and `.` next to Chinese characters, half-width `,` `.` next to Japanese text (Chinese-style `，` `．` in Japanese is Info), full-width `，` `。` `、` in Korean, and full-width characters in other languages (ideographic space, `、` `。`, full-width punctuation, letters and digits). Tags and placeholders are skipped. Warning. |
-| Platform Terms | `platform-terms` | Unofficial wording of button and feature names for the target platforms selected in Setup, in every language including the source (for example `マウスモード` instead of `マウス操作`, `Joy-Con2` instead of `Joy-Con 2`, `L-Knopf` instead of `L-Taste`). Only wording listed as `avoid` in the bundled data is found; wording registered in the Glossary is skipped. Info when no platform is selected. Warning. |
-| Kanji Range | `kanji-range` | Kanji in the Japanese column above the Project Profile's kanji range (for example grade 2 or Jōyō kanji), based on the elementary school grade allocation table (in effect since 2020) and the Jōyō kanji table. Readings and furigana are not checked. Info when no range is set. Warning. |
-| Legacy Text Usage | `legacy-text-usage` | `UnityEngine.UI.Text` and `TextMesh` in scenes and prefabs under `Assets` (read as YAML text, without opening scenes), plus `AddComponent<Text>()`-style code. Legacy Text has no line-breaking rules, so `、` and `。` can start a wrapped line in Japanese and Chinese. Wrapping legacy Text is a warning. |
-| Line Break Settings | `line-break-settings` | Whether TMP Settings and every `PanelSettings` asset under `Assets` have line-breaking character lists. UI Toolkit applies no line-breaking rules unless `PanelSettings.textSettings` references a Panel Text Settings asset with Line Breaking Rules (the default list is empty in Unity 6.3). `PanelSettings` created at runtime cannot be checked. |
+string all = LocaloQa.Report();
+string mine = LocaloQa.Report(keys: new[] { "KEY_A" }, languages: new[] { SystemLanguage.Korean });
+string some = LocaloQa.Report(checkIds: new[] { "missing-key", "missing-glyph" });
+string checks = LocaloQa.DescribeChecks();
+```
 
-Use TextMesh Pro (`TextMeshProUGUI` / `TextMeshPro`) or UI Toolkit instead of legacy Text. TMP Essential Resources assign line-breaking rules by default. In both TMP and UI Toolkit, **Following Characters** are characters that cannot start a line and **Leading Characters** are characters that cannot end a line.
+- `Report` returns the counts per severity on the first line, then one issue per line, most severe first. `keys` and `languages` narrow the issues that point to a table row; issues that point to an asset or a setting are always kept.
+- `DescribeChecks` lists every check id with what it finds and what it cannot see. Each check's description lives only in its class (`Editor/LocaloQa*Check.cs`).
+- `RunAll()` and `Run(checkId)` return the issues as objects (severity, check id, message, location).
+- Severity: **Error** breaks at runtime, **Warning** is likely visible on screen, **Info** may be intentional.
+- Batch mode: `Unity -batchmode -quit -projectPath <project> -executeMethod Localo.Editor.LocaloQaCommandLine.Run`, with optional `-localoQaChecks a,b`, `-localoQaKeys A,B`, `-localoQaLanguages Japanese,Korean` and `-localoQaOut <path>`. The process exits with code 1 when any Error is reported.
 
-The shared guide data lives in `Editor/Resources/LocaloLanguageGuidelines.json` inside the package. The defaults are US English, Korean (South Korea), Simplified Chinese (mainland China), Traditional Chinese (Taiwan), German (Germany), French (France), Latin American Spanish (`es-419`), and Brazilian Portuguese (`pt-BR`). Project-specific instructions and translator-approved text take priority. Before translating, the AI should read the whole sheet, infer a tone for each language and speaker/listener relationship, keep that tone consistent, and report its inferred policy and unresolved conflicts.
+Check ids: `missing-translation`, `missing-key`, `placeholder-mismatch`, `tag-mismatch`, `invalid-character`, `missing-glyph`, `manual-line-break-kinsoku`, `page-count`, `whitespace`, `punctuation`, `platform-terms`, `kanji-range`, `groups`, `legacy-text-usage`, `line-break-settings`. Add a check by implementing `ILocaloQaCheck` and registering it in `LocaloQa.Checks`.
 
-Both context export APIs accept an optional `targetLanguages` argument to limit the included language guides to enabled targets, for example `LocaloTranslationContext.ExportToString(targetLanguages: new[] { SystemLanguage.Korean })`. This filters only the guides; source text, glossary entries, and translator examples remain available. Confirm the whole target sheet before using row-only JSON to translate individual lines. The preview language selection does not change project settings or the languages included by **Copy All Context as JSON**.
-
-The context JSON includes `sourceLanguage`. AI translates from that language to the other languages, preserves the source text, and reports missing source text. Changing the source language reorders columns without rewriting existing translations or Source Terms. CSV placeholder warnings also compare against the selected source.
+Use TextMesh Pro (`TextMeshProUGUI` / `TextMeshPro`) or UI Toolkit instead of legacy Text, which has no line-breaking rules. In both TMP and UI Toolkit, **Following Characters** are characters that cannot start a line and **Leading Characters** are characters that cannot end a line.
 
 ## Table and Glossary shortcuts
 
@@ -206,7 +237,10 @@ Import flags: `-localoDryRun`, `-localoLanguages Japanese,Korean`, `-localoNoCom
 
 The Setup tab can install a project-local Localo skill at `.agents/skills/localo`. Installation is opt-in and does not modify global AI configuration. Updating the skill asks before replacing existing files.
 
-The generated skill keeps reusable Localo code separate from project data and requires platform-specific or confidential integrations to stay in the consuming project.
+- `SKILL.md`: the data contract, the translation steps, one priority table, one list of prohibitions, how to research a row's scene, display space and group, when to run QA, the CSV workflow and runtime integration.
+- `translation-guide.md`: translation craft for all languages and for eight targets (en-US, ko-KR, zh-CN, zh-TW, de-DE, fr-FR, es-419, pt-BR), with sources. **Open Bundled Translation Guide** on the Translation tab opens the same text.
+
+The skill keeps reusable Localo code separate from project data and requires platform-specific or confidential integrations to stay in the consuming project.
 
 ## Development sample
 

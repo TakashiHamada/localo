@@ -28,7 +28,6 @@ namespace Localo.Editor
             RegexOptions.Compiled);
 
         public string Id => "legacy-text-usage";
-        public string Title => "Legacy Text Usage";
         public string Description =>
             "Assets 内のシーン・プレハブ・スクリプトで、legacy Text（UnityEngine.UI.Text）と TextMesh を探します。" +
             "legacy Text には行頭禁則の機能が無いため、TextMesh Pro か UI Toolkit を使ってください。" +

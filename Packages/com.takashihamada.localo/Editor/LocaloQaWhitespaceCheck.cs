@@ -12,7 +12,6 @@ namespace Localo.Editor
     internal sealed class LocaloQaWhitespaceCheck : ILocaloQaCheck
     {
         public string Id => "whitespace";
-        public string Title => "Whitespace";
         public string Description =>
             "訳の先頭・末尾の空白（半角・全角・タブ・NBSP）の有無が原文と違う行を探します（Warning。揃えの位置がずれます）。" +
             "原文の先頭・末尾の空白と、原文に無い連続した半角スペースは Info です。";

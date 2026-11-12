@@ -1,9 +1,10 @@
 // =============================================================================
 // LocaloQa.cs — 文字の機械的なQAチェックの枠組み
 // =============================================================================
-// QAタブ（LocaloEditorWindow.QaTab.cs）と、テスト・AI・自動化からの呼び出し（LocaloQa.RunAll）が
-// 同じチェックを使う。チェックを増やすときは ILocaloQaCheck を実装したクラスを1つ作り、
-// 下の Checks 配列に加えるだけでよい（タブの表示も自動で増える）。
+// 人間が画面で実行するものではなく、AIや自動化が必要なときに呼ぶ道具として用意する。
+// 入口は LocaloQa.Report（文章で返す）と LocaloQa.RunAll / Run（指摘の一覧で返す）、
+// Editorを開いていないときは LocaloQaCommandLine。使いどきは配布用Skillに書く。
+// チェックを増やすときは ILocaloQaCheck を実装したクラスを1つ作り、下の Checks 配列に加える。
 // チェックはフォントや画面を使わず、アセットと文字列から機械的に判定できるものに限る。
 // 見た目の確認は人間が行う。
 // =============================================================================
@@ -11,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Localo.Runtime;
 using UnityEngine;
 
@@ -42,7 +44,7 @@ namespace Localo.Editor
         public string ObjectName = string.Empty;
         public int Line;
 
-        /// <summary>QAタブとログに出す、場所の短い表記。</summary>
+        /// <summary>報告とログに出す、場所の短い表記。</summary>
         public string Location
         {
             get
@@ -127,19 +129,17 @@ namespace Localo.Editor
     internal interface ILocaloQaCheck
     {
         string Id { get; }
-        /// <summary>QAタブの見出し（英語）。</summary>
-        string Title { get; }
-        /// <summary>QAタブに出す説明（日本語）。何を・なぜ調べ、何が対象外かを書く。</summary>
+        /// <summary>DescribeChecks で返す説明（日本語）。何を・なぜ調べ、何が対象外かを書く。チェックの説明はここだけに書く。</summary>
         string Description { get; }
         void Run(LocaloQaContext context, List<LocaloQaIssue> issues);
     }
 
     /// <summary>
-    /// 文字の機械的なQAチェックを実行する。QAタブと同じ結果を、コードからも取得できる。
+    /// 文字の機械的なQAチェックを実行する。
     /// </summary>
     public static class LocaloQa
     {
-        // QAタブの表示順・実行順。重大度の高いもの、よく使うものを先に置く。
+        // 実行順。重大度の高いもの、よく使うものを先に置く。
         internal static readonly ILocaloQaCheck[] Checks =
         {
             new LocaloQaMissingTranslationCheck(),
@@ -183,6 +183,73 @@ namespace Localo.Editor
             var issues = new List<LocaloQaIssue>();
             RunCheck(check, LocaloQaContext.Create(settings != null ? settings : LocaloEditorSettings.Load()), issues);
             return issues;
+        }
+
+        /// <summary>
+        /// チェックを実行し、結果を文章で返す。先頭に重大度ごとの件数、続けて1件1行（重大度の高い順）。
+        /// checkIds を渡すと、そのチェックだけを実行する（未知の Id なら例外）。
+        /// keys と languages を渡すと、表の行を指す指摘を、そのキーと言語のものに絞る。
+        /// アセットや設定を指す指摘（調べられなかったことの知らせを含む）は絞らない。
+        /// </summary>
+        public static string Report(IEnumerable<string> checkIds = null, IEnumerable<string> keys = null,
+            IEnumerable<SystemLanguage> languages = null, LocalizationSettings settings = null)
+        {
+            IReadOnlyList<LocaloQaIssue> issues = RunFiltered(checkIds, keys, languages, settings, out int checkCount);
+            return FormatReport(issues, checkCount);
+        }
+
+        /// <summary>登録されているチェックのIdと説明（何を調べ、何が対象外か）を、実行順に1件1行で返す。</summary>
+        public static string DescribeChecks()
+        {
+            var text = new StringBuilder();
+            text.Append($"Localo QA のチェック（{Checks.Length}種類）。Id を Report の checkIds に渡すと、そのチェックだけを実行する。");
+            foreach (ILocaloQaCheck check in Checks)
+                text.Append('\n').Append(check.Id).Append(": ").Append(check.Description);
+            return text.ToString();
+        }
+
+        /// <summary>Report と LocaloQaCommandLine が共有する、絞り込みつきの実行。指摘は重大度の高い順に並べる。</summary>
+        internal static IReadOnlyList<LocaloQaIssue> RunFiltered(IEnumerable<string> checkIds, IEnumerable<string> keys,
+            IEnumerable<SystemLanguage> languages, LocalizationSettings settings, out int checkCount)
+        {
+            ILocaloQaCheck[] checks = SelectChecks(checkIds);
+            checkCount = checks.Length;
+            HashSet<string> keySet = keys != null ? new HashSet<string>(keys, StringComparer.Ordinal) : null;
+            HashSet<SystemLanguage> languageSet = languages != null ? new HashSet<SystemLanguage>(languages) : null;
+
+            LocaloQaContext context = LocaloQaContext.Create(settings != null ? settings : LocaloEditorSettings.Load());
+            var issues = new List<LocaloQaIssue>();
+            foreach (ILocaloQaCheck check in checks)
+                RunCheck(check, context, issues);
+
+            // OrderByDescending は安定な並べ替えなので、同じ重大度の中では見つけた順が保たれる。
+            return issues
+                .Where(issue => issue.Table == null ||
+                                ((keySet == null || keySet.Contains(issue.Key)) &&
+                                 (languageSet == null || !issue.HasLanguage || languageSet.Contains(issue.Language))))
+                .OrderByDescending(issue => issue.Severity).ToList();
+        }
+
+        internal static string FormatReport(IReadOnlyList<LocaloQaIssue> issues, int checkCount)
+        {
+            var text = new StringBuilder();
+            text.Append($"Localo QA: Error {issues.Count(issue => issue.Severity == LocaloQaSeverity.Error)} / " +
+                        $"Warning {issues.Count(issue => issue.Severity == LocaloQaSeverity.Warning)} / " +
+                        $"Info {issues.Count(issue => issue.Severity == LocaloQaSeverity.Info)}（実行したチェック: {checkCount}種類）");
+            foreach (LocaloQaIssue issue in issues)
+                text.Append('\n').Append(issue);
+            return text.ToString();
+        }
+
+        // checkIds が null なら全部。指定されたときは、登録順のまま、そのチェックだけを返す。
+        private static ILocaloQaCheck[] SelectChecks(IEnumerable<string> checkIds)
+        {
+            if (checkIds == null) return Checks;
+            var wanted = new HashSet<string>(checkIds);
+            string[] unknown = wanted.Where(id => Checks.All(check => check.Id != id)).ToArray();
+            if (unknown.Length > 0)
+                throw new ArgumentException($"Unknown Localo QA check: {string.Join(", ", unknown)}", nameof(checkIds));
+            return Checks.Where(check => wanted.Contains(check.Id)).ToArray();
         }
 
         internal static void RunCheck(ILocaloQaCheck check, LocaloQaContext context, List<LocaloQaIssue> issues)

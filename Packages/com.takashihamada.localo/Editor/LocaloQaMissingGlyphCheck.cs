@@ -26,7 +26,6 @@ namespace Localo.Editor
         private const int MaxCharactersPerIssue = 30;
 
         public string Id => "missing-glyph";
-        public string Title => "Missing Glyphs";
         public string Description =>
             "TMP Settings の既定のフォントと、その代替フォントに無い文字（画面で□になる文字）を、言語ごとに探します。" +
             "画面ごとに別のフォントを指定している文字や、UI Toolkit・legacy Text のフォントは対象外です（既定のフォントでの目安です）。";

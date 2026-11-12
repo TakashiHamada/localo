@@ -6,7 +6,7 @@ using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 namespace Localo.Editor
 {
     /// <summary>
-    /// パッケージに同梱したファイル（言語別ガイド・機種の用語・作品プロファイルの選択肢・スキルのテンプレートなど）を読む。
+    /// パッケージに同梱したファイル（機種の用語・漢字の学年・作品プロファイルの選択肢・スキルのテンプレートなど）を読む。
     /// パッケージの置き場所（埋め込み・git・レジストリ）によってパスが変わるため、実行時にパッケージ情報から解決する。
     /// </summary>
     internal static class LocaloPackageFiles
@@ -44,5 +44,13 @@ namespace Localo.Editor
             cachedJson = json;
             return cached;
         }
+    }
+
+    /// <summary>同梱データの出典（題名とURL）。フィールド名は同梱JSONとコンテキストJSONのキーになる。</summary>
+    [Serializable]
+    internal sealed class LocaloBundledSource
+    {
+        public string title;
+        public string url;
     }
 }

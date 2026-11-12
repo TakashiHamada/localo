@@ -90,7 +90,7 @@ namespace Localo.Editor
     {
         public string reviewedOn;
         public string[] notes;
-        public LanguageGuidelineSource[] sources;
+        public LocaloBundledSource[] sources;
         /// <summary>第1学年から第6学年までに配当された漢字（6要素）。</summary>
         public string[] grades;
         /// <summary>常用漢字のうち、学年別漢字配当表に無い漢字。</summary>

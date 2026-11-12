@@ -13,7 +13,6 @@ namespace Localo.Editor
     internal sealed class LocaloQaPageCountCheck : ILocaloQaCheck
     {
         public string Id => "page-count";
-        public string Title => "Page Count";
         public string Description =>
             "空行（連続する <br>・\\n）で区切ったページの数が、原文と訳で違う行を探します。" +
             "ページごとに演出や表示時間が割り当てられていると、ずれの原因になります。" +

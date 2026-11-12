@@ -2,11 +2,11 @@
 // LocaloEditorWindow.cs — main entry point for Localo
 // =============================================================================
 // Launched from Window/Localo.
-// Setup、Glossary、Table、Translation、QAの各タブを切り替える。ツールバー右端の「?」ボタンでGuideウィンドウを開く。
+// Setup、Glossary、Table、Translationの各タブを切り替える。ツールバー右端の「?」ボタンでGuideウィンドウを開く。
 // This file owns window state and OnGUI dispatch, plus the Vim-like keybinding
 // event handling core. Per-tab drawing lives in
-// LocaloEditorWindow.SetupTab.cs / .TableTab.cs / .TranslationTab.cs / .GlossaryTab.cs / .QaTab.cs.
-// The QA checks themselves live in LocaloQa.cs and LocaloQa*Check.cs.
+// LocaloEditorWindow.SetupTab.cs / .TableTab.cs / .TranslationTab.cs / .GlossaryTab.cs.
+// The mechanical QA checks have no tab: AI and automation call LocaloQa.Report (LocaloQa.cs).
 // The Guide and the per-row Details are separate windows (LocaloGuideWindow / LocaloRowDetailsWindow).
 //
 // Vim event handling contract (see individual methods for details):
@@ -91,7 +91,7 @@ namespace Localo.Editor
         private static readonly Color WarningSectionBackground = new Color(1f, 0.78f, 0.18f, 0.18f);
         private static readonly Color ActiveSearchBackground = new Color(1f, 0.88f, 0.18f, 0.28f);
 
-        private static readonly string[] ToolbarLabels = { "Setup", "Glossary", "Table", "Translation", "QA" };
+        private static readonly string[] ToolbarLabels = { "Setup", "Glossary", "Table", "Translation" };
         private const float GuideButtonWidth = 24f;
         private static readonly GUIContent GuideButtonContent =
             new GUIContent("?", "Localoの使い方とショートカットを別ウィンドウで表示します。");
@@ -132,7 +132,7 @@ namespace Localo.Editor
             typeof(GUIUtility).GetProperty("compositionString", BindingFlags.Static | BindingFlags.NonPublic);
 
         // ToolbarLabels と同じ並び（GUILayout.Toolbar の添字をそのまま Tab として使う）。
-        private enum Tab { Setup, Glossary, Table, Translation, QA }
+        private enum Tab { Setup, Glossary, Table, Translation }
         private enum EditorMode { Normal, Insert }
         private enum PendingOpType { None, InsertRowBelow, DeleteRow }
 
@@ -228,6 +228,8 @@ namespace Localo.Editor
         private void OnEnable()
         {
             titleContent = new GUIContent(WindowTitle);
+            // タブの数が変わる更新をまたいで開いていたウィンドウが、存在しないタブを指したままにならないようにする。
+            if (!System.Enum.IsDefined(typeof(Tab), _currentTab)) _currentTab = Tab.Setup;
             _filteredIndices = new List<int>();
             Undo.undoRedoPerformed += HandleUndoRedo;
             EditorApplication.projectChanged += MarkDuplicateKeysDirty;
@@ -323,9 +325,6 @@ namespace Localo.Editor
                     break;
                 case Tab.Translation:
                     DrawTranslationTab();
-                    break;
-                case Tab.QA:
-                    DrawQaTab();
                     break;
             }
         }
@@ -815,8 +814,6 @@ namespace Localo.Editor
                 _pendingOpTargetRealRow = -1;
             }
 
-            // QAの指摘から移るときは、テーブルの切り替え（選択を初期化する）の後に行と列を選ぶ。
-            ApplyPendingQaReveal();
             ApplyPendingStructuralOp();
             ApplyPendingPaste();
         }

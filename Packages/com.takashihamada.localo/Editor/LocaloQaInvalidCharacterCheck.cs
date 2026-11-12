@@ -15,7 +15,6 @@ namespace Localo.Editor
     internal sealed class LocaloQaInvalidCharacterCheck : ILocaloQaCheck
     {
         public string Id => "invalid-character";
-        public string Title => "Invalid Characters";
         public string Description =>
             "原文を含むすべての言語で、制御文字（タブなど）、文字化けの記号（U+FFFD）、ゼロ幅文字、双方向制御文字を探します。" +
             "NBSP と全角スペースは対象外です。";

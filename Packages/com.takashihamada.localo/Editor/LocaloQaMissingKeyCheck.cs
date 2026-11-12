@@ -26,7 +26,6 @@ namespace Localo.Editor
             @"(?:GetLocalizedString|SetKey|LocaloDatabase\.GetText)\s*\(\s*""((?:[^""\\]|\\.)*)""", RegexOptions.Compiled);
 
         public string Id => "missing-key";
-        public string Title => "Missing Keys";
         public string Description =>
             "シーン・プレハブの Localo コンポーネントと、スクリプトの GetLocalizedString(\"KEY\")・SetKey(\"KEY\")・LocaloDatabase.GetText(\"KEY\", …) で使っているキーが、" +
             "登録されたどのテーブルにも無い箇所を探します。実行時にはキーがそのまま表示されます。文字列を組み立てて作るキーは調べられません。";

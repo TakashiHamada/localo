@@ -21,7 +21,6 @@ namespace Localo.Editor
         private const string KoreanForbiddenPunctuation = "，。、";
 
         public string Id => "punctuation";
-        public string Title => "Punctuation";
         public string Description =>
             "訳の言語に合わない句読点を探します。中国語・日本語の文中の半角の , . など、韓国語に混じった全角の「，」「。」など、欧米の言語に混じった全角の文字（全角スペース・全角の記号や英数字）が対象です。" +
             "日本語の中国式の「，」「．」は Info です。日本語の半角の ! ? は対象外です。";

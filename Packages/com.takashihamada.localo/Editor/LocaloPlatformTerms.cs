@@ -3,7 +3,7 @@
 // =============================================================================
 // データは Editor/Resources/LocaloPlatformTerms.json。一般公開の製品ページの表記だけを載せる
 // （ロットチェックなどの開発者向けの用語規定は転載しない）。プロジェクトのGlossaryに同じ語があれば
-// Glossaryが優先する。プロジェクトは Setup の Target Platforms で対象の機種を選ぶ。
+// Glossaryが優先する。プロジェクトは Translation タブの Target Platforms で対象の機種を選ぶ。
 // =============================================================================
 
 using System;
@@ -84,7 +84,7 @@ namespace Localo.Editor
         public string id;
         public string name;
         public string[] notes;
-        public LanguageGuidelineSource[] sources;
+        public LocaloBundledSource[] sources;
         public PlatformTerm[] terms;
     }
 

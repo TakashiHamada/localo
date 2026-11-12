@@ -1,7 +1,7 @@
 // =============================================================================
 // LocaloQaKanjiRangeCheck.cs — 日本語の漢字が、作品プロファイルの範囲を超えていないか
 // =============================================================================
-// Setup の Project Profile の漢字の範囲（未指定なら対象年齢の既定）と、学年別漢字配当表・常用漢字表
+// Translation タブの Project Profile の漢字の範囲（未指定なら対象年齢の既定）と、学年別漢字配当表・常用漢字表
 // （LocaloKanjiLevels.json）を比べ、日本語の列で範囲より上の漢字を探す。
 // 読み（音訓）が範囲内かどうかと、ふりがなの有無は調べない。タグとプレースホルダーの中は対象外。
 // =============================================================================
@@ -16,9 +16,8 @@ namespace Localo.Editor
     internal sealed class LocaloQaKanjiRangeCheck : ILocaloQaCheck
     {
         public string Id => "kanji-range";
-        public string Title => "Kanji Range";
         public string Description =>
-            "日本語の列で、SetupのProject Profileで決めた漢字の範囲（例: 小2まで、常用漢字）を超える漢字を探します。" +
+            "日本語の列で、TranslationタブのProject Profileで決めた漢字の範囲（例: 小2まで、常用漢字）を超える漢字を探します。" +
             "学年は小学校の学年別漢字配当表（2020年度から実施）によります。読み（音訓）とふりがなの有無は調べません。";
 
         public void Run(LocaloQaContext context, List<LocaloQaIssue> issues)
@@ -32,7 +31,7 @@ namespace Localo.Editor
                 issues.Add(new LocaloQaIssue
                 {
                     Severity = LocaloQaSeverity.Info,
-                    Message = "漢字の範囲が決まっていません。SetupのProject Profileで対象年齢か漢字の範囲を選ぶと調べます。"
+                    Message = "漢字の範囲が決まっていません。TranslationタブのProject Profileで対象年齢か漢字の範囲を選ぶと調べます。"
                 });
                 return;
             }

@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Localo.Tests
 {
-    /// <summary>QAタブの、訳文の中身・表記・キー・フォントのチェック。</summary>
+    /// <summary>QAの、訳文の中身・表記・キー・フォントのチェックと、AI向けの報告（Report・DescribeChecks）。</summary>
     public sealed class LocaloQaContentChecksTests
     {
         private LocalizationSettings _settings;
@@ -42,6 +42,76 @@ namespace Localo.Tests
             _table.SetText(row, SystemLanguage.English, english);
             _table.SetText(row, SystemLanguage.ChineseSimplified, chinese);
             return row;
+        }
+
+        // ---- 報告（AIが呼ぶ入口） ----------------------------------------------------
+
+        [Test]
+        public void Report_StartsWithCountsAndListsOneIssuePerLineBySeverity()
+        {
+            AddRow("BLANK", "はじめる", "  ", "开始");
+            AddRow("MISSING", "{0}点", "points", "{0}分");
+
+            string[] lines = LocaloQa.Report(new[] { "missing-translation", "placeholder-mismatch" }, settings: _settings).Split('\n');
+
+            Assert.That(lines[0], Is.EqualTo("Localo QA: Error 1 / Warning 1 / Info 0（実行したチェック: 2種類）"));
+            // 実行順（missing-translation が先）ではなく、重大度の高い順に並ぶ。
+            Assert.That(lines[1], Does.StartWith("[Error] placeholder-mismatch: QaTable / MISSING / English: "));
+            Assert.That(lines[2], Does.StartWith("[Warning] missing-translation: QaTable / BLANK / English: "));
+            Assert.That(lines, Has.Length.EqualTo(3));
+        }
+
+        [Test]
+        public void Report_FiltersRowIssuesByKeysAndLanguages()
+        {
+            AddRow("A", "はじめる", "", "");
+            AddRow("B", "おわる", "", "");
+            string[] checks = { "missing-translation" };
+
+            Assert.That(LocaloQa.Report(checks, settings: _settings).Split('\n'), Has.Length.EqualTo(5));
+
+            string[] byKey = LocaloQa.Report(checks, keys: new[] { "A" }, settings: _settings).Split('\n');
+            Assert.That(byKey, Has.Length.EqualTo(3));
+            Assert.That(byKey.Skip(1), Has.All.Contains("QaTable / A / "));
+
+            string[] byBoth = LocaloQa.Report(checks, new[] { "A" }, new[] { SystemLanguage.English }, _settings).Split('\n');
+            Assert.That(byBoth[0], Does.StartWith("Localo QA: Error 0 / Warning 1 / Info 0"));
+            Assert.That(byBoth[1], Does.Contain("QaTable / A / English"));
+            Assert.That(byBoth, Has.Length.EqualTo(2));
+
+            // 空の一覧は「絞り込みなし」ではなく、どの行にも合わない指定として扱う。
+            Assert.That(LocaloQa.Report(checks, keys: new string[0], settings: _settings).Split('\n'), Has.Length.EqualTo(1));
+        }
+
+        [Test]
+        public void Report_KeepsIssuesThatDoNotPointToARow_WhenFiltered()
+        {
+            // 漢字の範囲が未設定だと、調べられなかったことを Info で知らせる。行を指さないので、絞り込んでも残す。
+            string report = LocaloQa.Report(new[] { "kanji-range" }, keys: new[] { "NO_SUCH_KEY" }, settings: _settings);
+
+            Assert.That(report, Does.StartWith("Localo QA: Error 0 / Warning 0 / Info 1"));
+            Assert.That(report, Does.Contain("[Info] kanji-range: "));
+        }
+
+        [Test]
+        public void Report_RejectsUnknownCheckIds()
+        {
+            var exception = Assert.Throws<System.ArgumentException>(() =>
+                LocaloQa.Report(new[] { "missing-translation", "no-such-check" }, settings: _settings));
+            Assert.That(exception.Message, Does.Contain("no-such-check"));
+        }
+
+        [Test]
+        public void DescribeChecks_ListsEveryCheckIdWithItsDescription()
+        {
+            string[] lines = LocaloQa.DescribeChecks().Split('\n');
+
+            Assert.That(lines, Has.Length.EqualTo(LocaloQa.CheckIds.Count + 1));
+            for (int i = 0; i < LocaloQa.CheckIds.Count; i++)
+            {
+                Assert.That(lines[i + 1], Does.StartWith(LocaloQa.CheckIds[i] + ": "));
+                Assert.That(lines[i + 1].Length, Is.GreaterThan(LocaloQa.CheckIds[i].Length + 10));
+            }
         }
 
         // ---- 訳抜け ----------------------------------------------------------------

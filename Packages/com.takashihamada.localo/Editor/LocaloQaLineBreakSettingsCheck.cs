@@ -28,7 +28,6 @@ namespace Localo.Editor
         internal const string PanelLeadingProperty = "m_UnicodeLineBreakingRules.m_LeadingCharacters";
 
         public string Id => "line-break-settings";
-        public string Title => "Line Break Settings";
         public string Description =>
             "TextMesh Pro の TMP Settings と、Assets 内の PanelSettings（UI Toolkit）に、行頭禁則・行末禁則のリストが割り当てられているかを調べます。" +
             "UI Toolkit は Panel Text Settings を割り当てないと禁則が効きません。コードで実行時に作る PanelSettings は対象外です。";

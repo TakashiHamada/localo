@@ -13,7 +13,6 @@ namespace Localo.Editor
     internal sealed class LocaloQaPlaceholderCheck : ILocaloQaCheck
     {
         public string Id => "placeholder-mismatch";
-        public string Title => "Placeholder Mismatch";
         public string Description =>
             "原文と訳で、{0} などのプレースホルダーの組が違う行を探します。値が表示されなかったり、実行時にエラーになったりします。" +
             "並び順と、同じ番号の重複は問いません。訳が空欄の行は対象外です。";

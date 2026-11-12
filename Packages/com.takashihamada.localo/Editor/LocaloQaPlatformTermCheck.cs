@@ -1,7 +1,7 @@
 // =============================================================================
 // LocaloQaPlatformTermCheck.cs — 機種のボタン名・機能名の非公式な表記
 // =============================================================================
-// Setup の Target Platforms で選んだ機種について、同梱の公式表記（LocaloPlatformTerms.json）の
+// Translation タブの Target Platforms で選んだ機種について、同梱の公式表記（LocaloPlatformTerms.json）の
 // avoid に載っている書き方を、その言語の列（原文を含む）から探す。例:「マウスモード」→「マウス操作」。
 // プロジェクトの Glossary に同じ書き方が登録されていれば、作品として決めた表記とみなして対象外にする。
 // 公式表記の一覧に無い誤りは見つけられない。
@@ -17,7 +17,6 @@ namespace Localo.Editor
     internal sealed class LocaloQaPlatformTermCheck : ILocaloQaCheck
     {
         public string Id => "platform-terms";
-        public string Title => "Platform Terms";
         public string Description =>
             "Setupで選んだ機種のボタン名・機能名について、同梱の一覧で公式ではないとした書き方を探し、公式表記を示します。" +
             "原文を含むすべての言語が対象です。Glossaryに登録した書き方は対象外です。同梱の一覧に無い誤りは見つけられません。";
@@ -31,7 +30,7 @@ namespace Localo.Editor
                 issues.Add(new LocaloQaIssue
                 {
                     Severity = LocaloQaSeverity.Info,
-                    Message = "対象の機種が選ばれていません。SetupのTarget Platformsで選ぶと、ボタン名などの表記を調べます。"
+                    Message = "対象の機種が選ばれていません。TranslationタブのTarget Platformsで選ぶと、ボタン名などの表記を調べます。"
                 });
                 return;
             }

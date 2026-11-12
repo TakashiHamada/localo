@@ -15,7 +15,6 @@ namespace Localo.Editor
     internal sealed class LocaloQaGroupCheck : ILocaloQaCheck
     {
         public string Id => "groups";
-        public string Title => "Groups";
         public string Description =>
             "行のグループ（Group）と位置（Step）を調べます。片方だけ入っている行、位置の書式が違う行（例: 1、2-A、2-A-1）、" +
             "同じグループで位置が重なる行は Warning です。1行しかないグループは、グループ名の打ち間違いの可能性として Info です。";

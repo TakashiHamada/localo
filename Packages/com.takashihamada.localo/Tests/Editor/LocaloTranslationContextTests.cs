@@ -21,7 +21,6 @@ namespace Localo.Tests
             _settings = ScriptableObject.CreateInstance<LocalizationSettings>();
             _table = ScriptableObject.CreateInstance<LocalizationTable>();
             _table.name = "Dialogue";
-            _table.textType = LocaloTextType.Dialogue;
             _table.translationInstructions = "ウイリスのセリフ。軽い口調。";
             _settings.registeredTables.Add(new TableInfo { tableAsset = _table });
             _settings.glossary.Add(new LocaloGlossaryEntry
@@ -60,7 +59,7 @@ namespace Localo.Tests
             Assert.That(exported.glossary[0].translations[0].language, Is.EqualTo("Japanese"));
             Assert.That(exported.glossary[0].translations[0].text, Is.EqualTo("ウイリス"));
             Assert.That(exported.tables, Has.Count.EqualTo(1));
-            Assert.That(exported.tables[0].textType, Is.EqualTo("Dialogue"));
+            Assert.That(exported.tables[0].table, Is.EqualTo("Dialogue"));
             Assert.That(exported.tables[0].translationInstructions, Is.EqualTo(_table.translationInstructions));
             Assert.That(exported.tables[0].rows, Has.Count.EqualTo(1));
             Assert.That(exported.tables[0].rows[0].key, Is.EqualTo("HELLO"));
@@ -71,7 +70,7 @@ namespace Localo.Tests
         }
 
         [Test]
-        public void ExportRow_IncludesSheetLocksAndTranslatorExamplesFromOtherRowsAndSheets()
+        public void Export_ListsTranslatorLanguagesPerSheet_SoLockedColumnsServeAsExamples()
         {
             var translatorTable = ScriptableObject.CreateInstance<LocalizationTable>();
             try
@@ -83,55 +82,38 @@ namespace Localo.Tests
                 translatorTable.rows.Add(example);
                 translatorTable.SetText(example, SystemLanguage.Japanese, "こんにちは");
                 translatorTable.SetText(example, SystemLanguage.English, "Hello");
-                translatorTable.rows.Add(new LocalizationRow { key = "EMPTY" });
                 _settings.registeredTables.Add(new TableInfo { tableAsset = translatorTable });
                 _table.translatorLanguages.Add(SystemLanguage.French);
 
-                var exported = JsonUtility.FromJson<ProjectExport>(
-                    LocaloTranslationContext.ExportRowToString(_table, "HELLO", _settings));
+                var all = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportToString(_settings));
+                Assert.That(all.schemaVersion, Is.EqualTo(LocaloTranslationContext.SchemaVersion));
+                Assert.That(all.tables.ConvertAll(table => table.table), Is.EqualTo(new[] { "Dialogue", "TranslatorSheet" }));
+                Assert.That(all.tables[0].translatorLanguages, Is.EqualTo(new[] { "French" }));
+                Assert.That(all.tables[1].translatorLanguages, Is.EqualTo(new[] { "English" }));
+                Assert.That(all.tables[1].translationInstructions, Is.EqualTo("丁寧な口調"));
+                Assert.That(all.tables[1].rows[0].humanComment, Is.EqualTo("挨拶"));
+                Assert.That(all.tables[1].rows[0].translations[1].text, Is.EqualTo("Hello"));
 
-                Assert.That(exported.schemaVersion, Is.EqualTo(8));
-                Assert.That(exported.tables, Has.Count.EqualTo(1));
-                Assert.That(exported.tables[0].translatorLanguages, Is.EqualTo(new[] { "French" }));
-                Assert.That(exported.translatorExamples, Has.Count.EqualTo(1));
-                TableExport examples = exported.translatorExamples[0];
-                Assert.That(examples.translatorLanguages, Is.EqualTo(new[] { "English" }));
-                Assert.That(examples.translationInstructions, Is.EqualTo("丁寧な口調"));
-                Assert.That(examples.rows, Has.Count.EqualTo(1));
-                Assert.That(examples.rows[0].key, Is.EqualTo("EXAMPLE"));
-                Assert.That(examples.rows[0].humanComment, Is.EqualTo("挨拶"));
-                Assert.That(examples.rows[0].translations[0].text, Is.EqualTo("こんにちは"));
-                Assert.That(examples.rows[0].translations[1].text, Is.EqualTo("Hello"));
+                // 行単位の書き出しは、対象の行のシートだけを含む。
+                var row = JsonUtility.FromJson<ProjectExport>(
+                    LocaloTranslationContext.ExportRowToString(_table, "HELLO", _settings));
+                Assert.That(row.tables, Has.Count.EqualTo(1));
+                Assert.That(row.tables[0].translatorLanguages, Is.EqualTo(new[] { "French" }));
             }
             finally { Object.DestroyImmediate(translatorTable); }
         }
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void Export_IncludesEnabledGuidelinesFromThePreviewResource(bool singleRow)
+        [Test]
+        public void Export_ContainsDataOnly_AndPointsToTheSkillForInstructions()
         {
-            _settings.enabledLanguages.Add(SystemLanguage.Japanese);
-            _settings.enabledLanguages.Add(SystemLanguage.Korean);
-            _settings.enabledLanguages.Add(SystemLanguage.Korean);
-            TextAsset resource = AssetDatabase.LoadAssetAtPath<TextAsset>(
-                "Packages/com.takashihamada.localo/Editor/Resources/LocaloLanguageGuidelines.json");
-            Assert.That(resource, Is.Not.Null);
-            var preview = JsonUtility.FromJson<GuidelinesExport>(resource.text);
-
-            string json = singleRow
-                ? LocaloTranslationContext.ExportRowToString(_table, "HELLO", _settings)
-                : LocaloTranslationContext.ExportToString(_settings);
+            string json = LocaloTranslationContext.ExportToString(_settings);
             var exported = JsonUtility.FromJson<ProjectExport>(json);
 
-            Assert.That(exported.schemaVersion, Is.EqualTo(8));
-            Assert.That(exported.languageGuidelines.commonPoints, Is.EqualTo(preview.commonPoints));
-            Assert.That(exported.languageGuidelines.reviewedOn, Is.EqualTo(preview.reviewedOn));
-            Assert.That(exported.languageGuidelines.languages.ConvertAll(guide => guide.language),
-                Is.EqualTo(new[] { "English", "Korean" }));
-            LanguageGuideExport korean = exported.languageGuidelines.languages[1];
-            Assert.That(korean.locale, Is.EqualTo("ko-KR"));
-            Assert.That(korean.points, Is.EqualTo(preview.languages.Find(guide => guide.language == "Korean").points));
-            Assert.That(korean.sources, Is.Not.Empty);
+            Assert.That(exported.schemaVersion, Is.EqualTo(9));
+            Assert.That(exported.instructions, Does.Contain(".agents/skills/localo/SKILL.md"));
+            // 手順と翻訳のコツはSkillが持つ。JSONに写しを入れない。
+            Assert.That(json, Does.Not.Contain("languageGuidelines"));
+            Assert.That(json, Does.Not.Contain("translatorExamples"));
             Assert.That(_row.comment, Is.EqualTo("人間のメモを保持"));
             Assert.That(_table.translationInstructions, Is.EqualTo("ウイリスのセリフ。軽い口調。"));
         }
@@ -142,14 +124,12 @@ namespace Localo.Tests
             _settings.projectProfile = new LocaloProjectProfile
             {
                 audience = "lower-elementary",
-                genres = new List<string> { "puzzle" },
                 tones = new List<string> { "cute", "gentle" }
             };
 
             var withoutJapanese = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportToString(_settings));
             Assert.That(withoutJapanese.projectProfile.audience.id, Is.EqualTo("lower-elementary"));
             Assert.That(withoutJapanese.projectProfile.audience.guidance, Is.Not.Empty);
-            Assert.That(withoutJapanese.projectProfile.genres.ConvertAll(option => option.id), Is.EqualTo(new[] { "puzzle" }));
             // 保存順ではなく、選択肢の並び順で出す。
             Assert.That(withoutJapanese.projectProfile.tones.ConvertAll(option => option.id), Is.EqualTo(new[] { "gentle", "cute" }));
             Assert.That(withoutJapanese.projectProfile.japaneseKanjiRange?.id, Is.Null.Or.Empty);
@@ -164,7 +144,7 @@ namespace Localo.Tests
         }
 
         [Test]
-        public void Export_IncludesSelectedPlatformTermsForEnabledLanguagesOnly()
+        public void Export_IncludesSelectedPlatformTermsForEnabledLanguagesOnly_InFullExportOnly()
         {
             var none = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportToString(_settings));
             Assert.That(none.platformTerms?.platforms, Is.Null.Or.Empty);
@@ -180,25 +160,14 @@ namespace Localo.Tests
             Assert.That(mouse.translations.ConvertAll(text => text.language), Is.EquivalentTo(new[] { "English", "Japanese" }));
             Assert.That(mouse.translations.Find(text => text.language == "Japanese").text, Is.EqualTo("マウス操作"));
             Assert.That(mouse.translations.Find(text => text.language == "Japanese").avoid, Does.Contain("マウスモード"));
+
+            // 行単位の書き出しには入れない（全体の書き出しで読む）。
+            var row = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportRowToString(_table, "HELLO", _settings));
+            Assert.That(row.platformTerms?.platforms, Is.Null.Or.Empty);
         }
 
         [Test]
-        public void Export_GuidelineTargetsFilterWithoutRemovingSheetContext()
-        {
-            _settings.enabledLanguages.Add(SystemLanguage.Korean);
-            _settings.enabledLanguages.Add(SystemLanguage.French);
-            var exported = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportRowToString(
-                _table, "HELLO", _settings, new[] { SystemLanguage.Korean }));
-
-            Assert.That(exported.languageGuidelines.languages.ConvertAll(guide => guide.language),
-                Is.EqualTo(new[] { "Korean" }));
-            Assert.That(exported.tables[0].rows[0].translations[0].text, Is.EqualTo("やあ！"));
-            Assert.Throws<ArgumentException>(() => LocaloTranslationContext.ExportToString(
-                _settings, new[] { SystemLanguage.German }));
-        }
-
-        [Test]
-        public void Export_IncludesLanguageLessonsForEnabledTargetLanguages()
+        public void Export_IncludesLanguageLessonsForEnabledLanguages()
         {
             _settings.enabledLanguages.Add(SystemLanguage.Korean);
             _settings.SetLanguageLesson(SystemLanguage.Korean, "韓国語の方針");
@@ -209,62 +178,13 @@ namespace Localo.Tests
             _settings.SetLanguageLesson(SystemLanguage.French, "  ");
 
             var all = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportToString(_settings));
-            var row = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportRowToString(
-                _table, "HELLO", _settings, new[] { SystemLanguage.Korean }));
+            var row = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportRowToString(_table, "HELLO", _settings));
 
             // 有効な言語だけを設定順で含め、同じ言語は最後に保存した文章に置き換わる。
             Assert.That(all.languageLessons.ConvertAll(lesson => lesson.language), Is.EqualTo(new[] { "English", "Korean" }));
             Assert.That(all.languageLessons[0].text, Is.EqualTo("英語の方針"));
-            Assert.That(row.languageLessons.ConvertAll(lesson => lesson.language), Is.EqualTo(new[] { "Korean" }));
+            Assert.That(row.languageLessons.ConvertAll(lesson => lesson.language), Is.EqualTo(new[] { "English", "Korean" }));
             Assert.That(_settings.languageLessons.Exists(lesson => lesson.language == SystemLanguage.French), Is.False);
-        }
-
-        [Test]
-        public void Export_PreviousApiSignaturesRemainUsableAsDelegates()
-        {
-            // optional引数の追加でも、既存のメソッド参照に必要なシグネチャは変えない。
-            Func<LocalizationSettings, string> export = LocaloTranslationContext.ExportToString;
-            Func<LocalizationTable, string, LocalizationSettings, string> exportRow =
-                LocaloTranslationContext.ExportRowToString;
-
-            Assert.That(JsonUtility.FromJson<ProjectExport>(export(_settings)).schemaVersion, Is.EqualTo(8));
-            Assert.That(JsonUtility.FromJson<ProjectExport>(exportRow(_table, "HELLO", _settings)).schemaVersion,
-                Is.EqualTo(8));
-        }
-
-        [Test]
-        public void Export_GuidelineTargetsKeepSettingsOrderWhenRequestedInReverseOrder()
-        {
-            _settings.enabledLanguages.Add(SystemLanguage.Korean);
-            _settings.enabledLanguages.Add(SystemLanguage.French);
-            // 対象は集合として扱い、出力順は設定に従う。重複指定でガイドを増やさない。
-            var targets = new[] { SystemLanguage.French, SystemLanguage.English, SystemLanguage.French };
-            var exported = JsonUtility.FromJson<ProjectExport>(
-                LocaloTranslationContext.ExportToString(_settings, targets));
-
-            Assert.That(exported.languageGuidelines.languages.ConvertAll(guide => guide.language),
-                Is.EqualTo(new[] { "English", "French" }));
-        }
-
-        [Test]
-        public void Export_AllSupportedTargetsHaveTheChosenRegionAndResearchSources()
-        {
-            _settings.enabledLanguages.AddRange(LocalizationLanguages.SelectableLanguages);
-            var exported = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportToString(_settings));
-            List<LanguageGuideExport> guides = exported.languageGuidelines.languages;
-
-            Assert.That(guides, Has.Count.EqualTo(8));
-            Assert.That(guides.Find(guide => guide.language == "English").locale, Is.EqualTo("en-US"));
-            Assert.That(guides.Find(guide => guide.language == "French").locale, Is.EqualTo("fr-FR"));
-            Assert.That(guides.Find(guide => guide.language == "Spanish").locale, Is.EqualTo("es-419"));
-            Assert.That(guides.Find(guide => guide.language == "Portuguese").locale, Is.EqualTo("pt-BR"));
-            foreach (LanguageGuideExport guide in guides)
-            {
-                Assert.That(guide.points, Is.Not.Empty, guide.language);
-                Assert.That(guide.sources, Is.Not.Empty, guide.language);
-                foreach (SourceExport source in guide.sources)
-                    Assert.That(source.url, Does.StartWith("https://"), guide.language);
-            }
         }
 
         [TestCase(SystemLanguage.Japanese, false)]
@@ -299,7 +219,6 @@ namespace Localo.Tests
             Assert.That(_row.comment, Is.EqualTo("人間のメモを保持"));
             Assert.That(_table.GetText(_row, SystemLanguage.Japanese), Is.EqualTo("やあ！"));
             Assert.That(_table.translationInstructions, Is.EqualTo("ウイリスのセリフ。軽い口調。"));
-            Assert.That(_table.textType, Is.EqualTo(LocaloTextType.Dialogue));
             Undo.FlushUndoRecordObjects();
             Undo.PerformUndo();
             Assert.That(_table.rows[0].aiScene, Is.EqualTo("Aボタンを押すまで表示。"));
@@ -318,17 +237,6 @@ namespace Localo.Tests
             Assert.That(_row.aiScene, Is.EqualTo("タイトル画面。"));
             Assert.That(_row.aiDisplaySpace, Is.EqualTo("字幕、3秒。"));
         }
-
-#pragma warning disable CS0618 // 旧APIの互換性を確認する
-        [Test]
-        public void SetResearch_StoresResearchAsSceneOnly()
-        {
-            LocaloTranslationContext.SetResearch(_table, "HELLO", "ポーズ中に表示。", _settings);
-            Assert.That(_row.aiScene, Is.EqualTo("ポーズ中に表示。"));
-            Assert.That(_row.aiDisplaySpace, Is.EqualTo("会話ウィンドウ、2行。"));
-            Assert.That(_row.comment, Is.EqualTo("人間のメモを保持"));
-        }
-#pragma warning restore CS0618
 
         [Test]
         public void SetRowContext_RejectsUnregisteredTableMissingAndDuplicateKeys()
@@ -365,7 +273,6 @@ namespace Localo.Tests
 
                 var legacy = AssetDatabase.LoadAssetAtPath<LocalizationTable>(assetPath);
                 Assert.That(legacy, Is.Not.Null);
-                Assert.That(legacy.textType, Is.EqualTo(LocaloTextType.Unspecified));
                 Assert.That(legacy.rows[0].aiScene, Is.EqualTo("legacy research"));
                 Assert.That(legacy.rows[0].aiDisplaySpace, Is.Empty);
                 Assert.That(legacy.rows[0].comment, Is.EqualTo("memo"));
@@ -418,7 +325,7 @@ namespace Localo.Tests
                 var json = LocaloTranslationContext.ExportGroupToString("confirm", _settings);
                 var exported = JsonUtility.FromJson<ProjectExport>(json);
 
-                Assert.That(exported.schemaVersion, Is.EqualTo(8));
+                Assert.That(exported.schemaVersion, Is.EqualTo(9));
                 Assert.That(exported.focusKey, Is.Empty);
                 Assert.That(exported.groups, Has.Count.EqualTo(1));
                 Assert.That(exported.groups[0].name, Is.EqualTo("confirm"));
@@ -428,7 +335,7 @@ namespace Localo.Tests
                     Is.EqualTo(new[] { "1", "2", "2-A", "2-B" }));
                 Assert.That(exported.tables, Has.Count.EqualTo(2));
                 Assert.That(exported.tables[0].rows.ConvertAll(row => row.key), Is.EqualTo(new[] { "HELLO", "QUESTION" }));
-                Assert.That(exported.tables[1].textType, Is.EqualTo("Interface"));
+                Assert.That(exported.tables[1].table, Is.EqualTo("Answers"));
                 Assert.That(exported.tables[1].rows.ConvertAll(row => row.key), Is.EqualTo(new[] { "YES", "NO" }));
                 Assert.That(exported.tables[1].rows[0].aiGroup, Is.EqualTo("confirm"));
                 Assert.That(exported.tables[1].rows[0].aiGroupStep, Is.EqualTo("2-A"));
@@ -545,7 +452,7 @@ namespace Localo.Tests
                 Assert.That(exported.groups[0].members.ConvertAll(member => member.key),
                     Is.EqualTo(new[] { "YES", "QUESTION", "NO", "HELLO" }));
                 Assert.That(exported.groups[0].members[0].step, Is.EqualTo("1"));
-                Assert.That(exported.tables.ConvertAll(table => table.textType), Is.EqualTo(new[] { "Dialogue", "Interface" }));
+                Assert.That(exported.tables.ConvertAll(table => table.table), Is.EqualTo(new[] { "Dialogue", "Answers" }));
                 Assert.That(exported.tables[1].rows[0].aiGroupStep, Is.EqualTo("1"));
             }
             finally { Object.DestroyImmediate(answers); }
@@ -574,14 +481,13 @@ namespace Localo.Tests
             finally { Object.DestroyImmediate(answers); }
         }
 
-        // HELLO(1)・QUESTION(2) を Dialogue シートに、YES(2-A)・NO(2-B) を別の Interface シートに置き、
+        // HELLO(1)・QUESTION(2) を Dialogue シートに、YES(2-A)・NO(2-B) を別の Answers シートに置き、
         // グループ「confirm」にする。Dialogue シートにはグループの無い UNGROUPED も置く。
         // 登録の順とシートの中の順を、位置の順とわざと変えておく。
         private LocalizationTable CreateAnswerTable()
         {
             var answers = ScriptableObject.CreateInstance<LocalizationTable>();
             answers.name = "Answers";
-            answers.textType = LocaloTextType.Interface;
             answers.rows.Add(new LocalizationRow { key = "YES", aiGroup = "confirm", aiGroupStep = "2-A" });
             answers.rows.Add(new LocalizationRow { key = "NO", aiGroup = "confirm", aiGroupStep = "2-B" });
             _settings.registeredTables.Add(new TableInfo { tableAsset = answers });
@@ -599,30 +505,12 @@ namespace Localo.Tests
             public string focusKey;
             public List<GroupExport> groups;
             public string sourceLanguage;
-            public GuidelinesExport languageGuidelines;
+            public string instructions;
             public List<TextExport> languageLessons;
             public ProfileExport projectProfile;
             public PlatformTermsExport platformTerms;
             public List<GlossaryExport> glossary;
-            public List<TableExport> translatorExamples;
             public List<TableExport> tables;
-        }
-        [Serializable] private sealed class GuidelinesExport
-        {
-            public string reviewedOn;
-            public List<string> commonPoints;
-            public List<LanguageGuideExport> languages;
-        }
-        [Serializable] private sealed class LanguageGuideExport
-        {
-            public string language;
-            public string locale;
-            public List<string> points;
-            public List<SourceExport> sources;
-        }
-        [Serializable] private sealed class SourceExport
-        {
-            public string url;
         }
         [Serializable] private sealed class GlossaryExport
         {
@@ -631,7 +519,7 @@ namespace Localo.Tests
         }
         [Serializable] private sealed class TableExport
         {
-            public string textType;
+            public string table;
             public string translationInstructions;
             public List<string> translatorLanguages;
             public List<RowExport> rows;
@@ -659,7 +547,6 @@ namespace Localo.Tests
         [Serializable] private sealed class ProfileExport
         {
             public OptionExport audience;
-            public List<OptionExport> genres;
             public List<OptionExport> tones;
             public OptionExport japaneseKanjiRange;
         }
