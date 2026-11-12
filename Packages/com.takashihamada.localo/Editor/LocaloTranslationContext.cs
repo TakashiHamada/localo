@@ -21,7 +21,7 @@ namespace Localo.Editor
         }
 
         /// <summary>
-        /// 全シートの文脈と全行をJSONで返す。targetLanguagesはガイドだけを絞り、原文・用語集・お手本は保持する。
+        /// 全シートの文脈と全行をJSONで返す。targetLanguagesはガイドと「学んだこと」だけを絞り、原文・用語集・お手本は保持する。
         /// </summary>
         public static string ExportToString(LocalizationSettings settings = null,
             IEnumerable<SystemLanguage> targetLanguages = null)
@@ -200,6 +200,13 @@ namespace Localo.Editor
                 throw new ArgumentException("ガイドの翻訳先には有効な言語を指定してください。", nameof(targetLanguages));
             // 呼び出し側の対象指定順に左右されず、Tableと同じ設定順でガイドを渡す。
             context.languageGuidelines = LocaloLanguageGuidelines.ForLanguages(enabled.Where(targets.Contains));
+            // 言語別ガイドと同じ対象・同じ順で、記入済みの「学んだこと」だけを渡す。
+            foreach (SystemLanguage language in enabled.Where(targets.Contains).Distinct())
+            {
+                string lesson = settings.GetLanguageLesson(language);
+                if (!string.IsNullOrWhiteSpace(lesson))
+                    context.languageLessons.Add(new LanguageTextJson { language = language.ToString(), text = lesson });
+            }
             context.projectProfile = LocaloProjectProfileOptions.CreateContext(settings);
             context.platformTerms = CreatePlatformTerms(settings, enabled);
             foreach (LocaloGlossaryEntry entry in settings.glossary ?? new List<LocaloGlossaryEntry>())
@@ -316,10 +323,11 @@ namespace Localo.Editor
         // schemaVersion 5: 翻訳元の言語をsourceLanguageとして明示する。
         // schemaVersion 6: 作品プロファイル（projectProfile）と機種の公式表記（platformTerms）を加える。
         // schemaVersion 7: 行のグループ（aiGroup・aiGroupStep）、グループの目次（groups）、行単位の対象キー（focusKey）を加える。
+        // schemaVersion 8: 作品・言語ごとの「学んだこと」（languageLessons）を加える。
         [Serializable]
         private sealed class ProjectContext
         {
-            public int schemaVersion = 7;
+            public int schemaVersion = 8;
             public string sourceLanguage;
             public string instructions = "sourceLanguageで指定した言語のtranslationsを原文とし、他の言語へ翻訳する。原文の言語を列の位置やEnglish固定で推測しない。" +
                 "原文が空欄なら他言語から推測せず報告し、翻訳元の文章は翻訳先として上書きしない。" +
@@ -328,6 +336,8 @@ namespace Localo.Editor
                 "翻訳後に、該当する登録用語が守られているか確認する。人間の指示や確定訳と矛盾する場合は勝手に決めず報告する。" +
                 "languageGuidelinesのcommonPointsと翻訳先に対応するlanguagesを参照し、locale・region・敬語・文法・表記に注意する。" +
                 "言語別ガイドは一般的な候補であり、人間の指示・作品の翻訳方針・用語集・翻訳者の確定訳を優先する。" +
+                "languageLessonsは、この作品のその言語で確定した書き方（翻訳者の修正から学んだことなど）で、人間が確認した内容である。" +
+                "翻訳先の言語の項目を翻訳前に読み、languageGuidelinesより優先する。シートの方針・用語集と食い違う場合は報告する。AIは変更しない。" +
                 "翻訳前にシート全体の原文と既存訳を読み、言語ごとの口調方針を決める。未指定の敬語や呼称は話者・相手・場面から推定し、" +
                 "同じ相手との関係では統一する。相手や場面で意図的に変わる敬語を一律に揃えない。" +
                 "対象シート全体が未確認ならExportToStringで取得してから口調を決める。全体の確認後は行単位のJSONを使える。" +
@@ -342,6 +352,8 @@ namespace Localo.Editor
                 "同じ言語・近い文脈の用語・言い回し・口調の優先的なお手本にする。それ以外の訳は参考例として区別する。" +
                 "シート固有の話者や口調を無関係な文脈に流用しない。用語集や人間の指示と矛盾する場合は勝手に変更せず報告する。" +
                 "翻訳は原文の意味・意図・使用場面・話者の口調を保ち、用語と言い回しを文脈に合わせて統一する。" +
+                "セリフは意味が合うだけの訳で止めず、その話者がその場面で対象言語で本当に言いそうな文にする。" +
+                "年齢に合う語彙、固定するキーワード、強調の手段、改行の流し直しとページ数の維持はlanguageGuidelinesに従う。" +
                 "特にボタンや短いUI文言は、原文とおおむね同じ表示幅・行数を目指し、不要な説明を足さず簡潔に訳す。" +
                 "文字数は目安とし、言語やフォントによる表示幅の違いを考慮する。指定された表示領域・長さの制約があれば従う。" +
                 "短くするために重要な意味や口調を損なわない。両立が難しい場合や表示領域が不明で収まりに懸念がある場合は、" +
@@ -359,6 +371,7 @@ namespace Localo.Editor
             public List<GroupContext> groups = new List<GroupContext>();
             public List<string> languages = new List<string>();
             public LanguageGuidelinesContext languageGuidelines;
+            public List<LanguageTextJson> languageLessons = new List<LanguageTextJson>();
             public ProjectProfileContext projectProfile;
             public PlatformTermsCatalog platformTerms;
             public List<GlossaryContext> glossary = new List<GlossaryContext>();

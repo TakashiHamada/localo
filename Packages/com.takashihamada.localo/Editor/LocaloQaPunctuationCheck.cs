@@ -18,13 +18,12 @@ namespace Localo.Editor
     internal sealed class LocaloQaPunctuationCheck : ILocaloQaCheck
     {
         private const string ChineseAsciiPunctuation = ",?!:;";
-        private const string FullWidthPunctuation = "，。、！？：；（）";
         private const string KoreanForbiddenPunctuation = "，。、";
 
         public string Id => "punctuation";
         public string Title => "Punctuation";
         public string Description =>
-            "訳の言語に合わない句読点を探します。中国語・日本語の文中の半角の , . など、韓国語や欧米の言語に混じった全角の「，」「。」などが対象です。" +
+            "訳の言語に合わない句読点を探します。中国語・日本語の文中の半角の , . など、韓国語に混じった全角の「，」「。」など、欧米の言語に混じった全角の文字（全角スペース・全角の記号や英数字）が対象です。" +
             "日本語の中国式の「，」「．」は Info です。日本語の半角の ! ? は対象外です。";
 
         public void Run(LocaloQaContext context, List<LocaloQaIssue> issues)
@@ -65,8 +64,8 @@ namespace Localo.Editor
                         visible, Find(visible, KoreanForbiddenPunctuation));
                     break;
                 default:
-                    AddIfAny(problems, LocaloQaSeverity.Warning, "全角の句読点があります",
-                        visible, Find(visible, FullWidthPunctuation));
+                    AddIfAny(problems, LocaloQaSeverity.Warning, "全角の文字があります（この言語では半角が普通です）",
+                        visible, FindFullWidth(visible));
                     break;
             }
             return problems;
@@ -83,6 +82,18 @@ namespace Localo.Editor
                 bool nextCjk = i + 1 < text.Length && isCjk(text[i + 1]);
                 if (asciiPunctuation.IndexOf(c) >= 0 && (prevCjk || nextCjk)) found.Add(i);
                 else if (c == '.' && prevCjk && !(i + 1 < text.Length && char.IsDigit(text[i + 1]))) found.Add(i);
+            }
+            return found;
+        }
+
+        // 全角スペース、「、」「。」、全角の英数字・記号（U+FF01〜U+FF5E）。原文の日本語から残りやすい。
+        private static List<int> FindFullWidth(string text)
+        {
+            var found = new List<int>();
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+                if (c == '\u3000' || c == '、' || c == '。' || (c >= '\uFF01' && c <= '\uFF5E')) found.Add(i);
             }
             return found;
         }

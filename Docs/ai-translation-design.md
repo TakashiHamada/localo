@@ -18,9 +18,16 @@
 - SetupのSource Languageで翻訳元を選ぶ。`LocalizationSettings.translationSourceLanguage`に保存し、初期値はEnglish。日本語原文ならJapaneseを選ぶ。
 - 選んだ言語をTableとGlossaryの先頭に固定し、必ず有効・表示対象にする。ほかの言語は並べ替え・非表示が可能。既存の文章は書き換えない。
 - Source Termは選んだ言語で書く用語・行の識別名とする。実際の正式表記は各言語の列に書く。翻訳元を変更するときは、人間が既存のSource Termと原文を確認する。
-- JSONの現行schema versionは7（version 7で`groups`・`focusKey`・`aiGroup`/`aiGroupStep`、version 5で`sourceLanguage`を追加）。全体・行単位ともルートの`sourceLanguage`を含め、外部AIはその言語の文章から他言語へ翻訳する。原文は上書きせず、空欄は報告する。CSVのプレースホルダー比較も選択された原文言語を使う。
+- JSONの現行schema versionは8（version 8で`languageLessons`、version 7で`groups`・`focusKey`・`aiGroup`/`aiGroupStep`、version 5で`sourceLanguage`を追加）。全体・行単位ともルートの`sourceLanguage`を含め、外部AIはその言語の文章から他言語へ翻訳する。原文は上書きせず、空欄は報告する。CSVのプレースホルダー比較も選択された原文言語を使う。
 - 実行時のフォールバックはEnglishのまま。起動時の表示言語とも独立する。
 - 以下に残る日本語固定・English先頭固定・schema version 4の説明より、この決定を優先する。言語別ガイド自体の追加時点はversion 4だった。
+
+## 追加決定：言語ごとの「学んだこと」（schema version 8）
+
+- TranslationタブのProject Lessonsに、言語ごとの自由記述を1つ持つ。`LocalizationSettings.languageLessons`（言語と文章の組）に保存する。
+- 分担：同梱の言語別ガイド＝どの作品にも当てはまること。シートの翻訳方針＝話者と声。用語集＝用語の正式表記。この欄＝その作品のその言語で確定した書き方（全体で固定する語、強調の手段、年齢に合う語の選び方など）。
+- コンテキストJSONのルートに`languageLessons`（言語名と文章）を加える。有効な言語のうち記入済みのものだけを設定順で含め、`targetLanguages`で言語別ガイドと同じ対象に絞る。AIは同梱ガイドより優先して読む。
+- AIはこの欄を保存しない。翻訳者の確定訳との違いなどからまとめた案を作業報告に示し、人間が確認して貼り付ける。保存用のAPIは設けない。
 
 ## 追加決定：行のグループ（schema version 7）
 

@@ -139,7 +139,7 @@ namespace Localo.Editor
             if (GUILayout.Button(new GUIContent("Copy All Context as JSON", "全シートの文脈と、有効な言語の翻訳ガイドをJSONでコピーします。")))
                 EditorGUIUtility.systemCopyBuffer = LocaloTranslationContext.ExportToString(_settings);
             EditorGUILayout.LabelField(
-                "シートの種類と方針・用語集・人間のコメント・行のグループと場面と器・言語別ガイドをまとめてAIに渡せます。ガイドはプレビューの選択に関係なく、有効な全言語を含みます。",
+                "シートの種類と方針・用語集・人間のコメント・行のグループと場面と器・言語別ガイド・Project LessonsをまとめてAIに渡せます。ガイドはプレビューの選択に関係なく、有効な全言語を含みます。",
                 EditorStyles.wordWrappedMiniLabel);
         }
     }

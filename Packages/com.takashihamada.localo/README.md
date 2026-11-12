@@ -50,7 +50,9 @@ LocaloTranslationContext.SetRowGroups(new[] { new LocaloRowGroupAssignment("MY_K
 
 ### 言語別ガイドと口調の統一
 
-Translationタブの **Language Guidelines** は、8言語の対象地域と注意点を閲覧するプレビューです。共通ルールと出典は折りたたみで確認できます。作品固有の地域・口調は既存の **Translation Guidelines** に記入します。プレビューの言語選択は設定アセットを変更しません。
+Translationタブの **Language Guidelines** は、8言語の対象地域と注意点を閲覧するプレビューです。共通ルールと出典は折りたたみで確認できます。シートごとの地域・口調は既存の **Translation Guidelines** に記入します。プレビューの言語選択は設定アセットを変更しません。
+
+**Project Lessons** は、選んだ言語について、この作品で確定した書き方（翻訳者の修正から分かったこと、全体で固定する語、強調の手段など）を全シート共通で記入する欄です。`LocalizationSettings.languageLessons` に保存され、AI向けJSONの `languageLessons` に有効な言語の分が入ります。AIは同梱のガイドより優先して読みます。AIはこの欄を書き換えず、追記の案を作業報告に示します。話者ごとの声は **Translation Guidelines**、用語の正式表記は **Glossary** に記入します。
 
 画面とAI向けJSONは、同梱の `Editor/Resources/LocaloLanguageGuidelines.json` を共通で参照します。既定の地域はen-US・ko-KR・zh-CN・zh-TW・de-DE・fr-FR・es-419・pt-BRです。**Copy All Context as JSON** は、プレビューで選んだ言語に関係なく、有効な全言語のガイドを `languageGuidelines` に含めます。
 

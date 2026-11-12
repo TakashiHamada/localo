@@ -43,6 +43,9 @@ namespace Localo.Editor
         // <br> は改行として先に置き換え、残りのタグは LocaloTextPatterns.StripTags で取り除く。
         private static readonly Regex BreakTagPattern = new Regex(@"<br\s*\/?>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+        // 空白だけの行をはさんでもよい、連続する2つ以上の改行。
+        private static readonly Regex PageBreakPattern = new Regex(@"\n(?:[ \t\u3000]*\n)+", RegexOptions.Compiled);
+
         public static bool IsLineStartProhibited(char character) => LineStartProhibitedCharacters.IndexOf(character) >= 0;
 
         public static bool IsLineEndProhibited(char character) => LineEndProhibitedCharacters.IndexOf(character) >= 0;
@@ -89,6 +92,20 @@ namespace Localo.Editor
                     violations.Add(new ManualBreakViolation(false, i + 1, last));
             }
             return violations;
+        }
+
+        /// <summary>
+        /// 空行（連続する2つ以上の改行）で区切ったページの数。文字のないページは数えない。
+        /// 空の文字列は0、空行のない文字列は1を返す。
+        /// </summary>
+        public static int CountPages(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return 0;
+            string normalized = BreakTagPattern.Replace(text.Replace("\r\n", "\n").Replace('\r', '\n'), "\n");
+            int pages = 0;
+            foreach (string page in PageBreakPattern.Split(normalized))
+                if (LocaloTextPatterns.StripTags(page).Trim().Length > 0) pages++;
+            return pages;
         }
 
         /// <summary>required のうち、actual に含まれない文字を順に並べて返す（無ければ空文字）。</summary>

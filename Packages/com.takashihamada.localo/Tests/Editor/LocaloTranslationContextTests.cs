@@ -90,7 +90,7 @@ namespace Localo.Tests
                 var exported = JsonUtility.FromJson<ProjectExport>(
                     LocaloTranslationContext.ExportRowToString(_table, "HELLO", _settings));
 
-                Assert.That(exported.schemaVersion, Is.EqualTo(6));
+                Assert.That(exported.schemaVersion, Is.EqualTo(8));
                 Assert.That(exported.tables, Has.Count.EqualTo(1));
                 Assert.That(exported.tables[0].translatorLanguages, Is.EqualTo(new[] { "French" }));
                 Assert.That(exported.translatorExamples, Has.Count.EqualTo(1));
@@ -123,7 +123,7 @@ namespace Localo.Tests
                 : LocaloTranslationContext.ExportToString(_settings);
             var exported = JsonUtility.FromJson<ProjectExport>(json);
 
-            Assert.That(exported.schemaVersion, Is.EqualTo(6));
+            Assert.That(exported.schemaVersion, Is.EqualTo(8));
             Assert.That(exported.languageGuidelines.commonPoints, Is.EqualTo(preview.commonPoints));
             Assert.That(exported.languageGuidelines.reviewedOn, Is.EqualTo(preview.reviewedOn));
             Assert.That(exported.languageGuidelines.languages.ConvertAll(guide => guide.language),
@@ -198,6 +198,28 @@ namespace Localo.Tests
         }
 
         [Test]
+        public void Export_IncludesLanguageLessonsForEnabledTargetLanguages()
+        {
+            _settings.enabledLanguages.Add(SystemLanguage.Korean);
+            _settings.SetLanguageLesson(SystemLanguage.Korean, "韓国語の方針");
+            _settings.SetLanguageLesson(SystemLanguage.English, "古い方針");
+            _settings.SetLanguageLesson(SystemLanguage.English, "英語の方針");
+            _settings.SetLanguageLesson(SystemLanguage.German, "無効な言語の方針");
+            _settings.SetLanguageLesson(SystemLanguage.French, "消す方針");
+            _settings.SetLanguageLesson(SystemLanguage.French, "  ");
+
+            var all = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportToString(_settings));
+            var row = JsonUtility.FromJson<ProjectExport>(LocaloTranslationContext.ExportRowToString(
+                _table, "HELLO", _settings, new[] { SystemLanguage.Korean }));
+
+            // 有効な言語だけを設定順で含め、同じ言語は最後に保存した文章に置き換わる。
+            Assert.That(all.languageLessons.ConvertAll(lesson => lesson.language), Is.EqualTo(new[] { "English", "Korean" }));
+            Assert.That(all.languageLessons[0].text, Is.EqualTo("英語の方針"));
+            Assert.That(row.languageLessons.ConvertAll(lesson => lesson.language), Is.EqualTo(new[] { "Korean" }));
+            Assert.That(_settings.languageLessons.Exists(lesson => lesson.language == SystemLanguage.French), Is.False);
+        }
+
+        [Test]
         public void Export_PreviousApiSignaturesRemainUsableAsDelegates()
         {
             // optional引数の追加でも、既存のメソッド参照に必要なシグネチャは変えない。
@@ -205,9 +227,9 @@ namespace Localo.Tests
             Func<LocalizationTable, string, LocalizationSettings, string> exportRow =
                 LocaloTranslationContext.ExportRowToString;
 
-            Assert.That(JsonUtility.FromJson<ProjectExport>(export(_settings)).schemaVersion, Is.EqualTo(6));
+            Assert.That(JsonUtility.FromJson<ProjectExport>(export(_settings)).schemaVersion, Is.EqualTo(8));
             Assert.That(JsonUtility.FromJson<ProjectExport>(exportRow(_table, "HELLO", _settings)).schemaVersion,
-                Is.EqualTo(6));
+                Is.EqualTo(8));
         }
 
         [Test]
@@ -396,7 +418,7 @@ namespace Localo.Tests
                 var json = LocaloTranslationContext.ExportGroupToString("confirm", _settings);
                 var exported = JsonUtility.FromJson<ProjectExport>(json);
 
-                Assert.That(exported.schemaVersion, Is.EqualTo(7));
+                Assert.That(exported.schemaVersion, Is.EqualTo(8));
                 Assert.That(exported.focusKey, Is.Empty);
                 Assert.That(exported.groups, Has.Count.EqualTo(1));
                 Assert.That(exported.groups[0].name, Is.EqualTo("confirm"));
@@ -578,6 +600,7 @@ namespace Localo.Tests
             public List<GroupExport> groups;
             public string sourceLanguage;
             public GuidelinesExport languageGuidelines;
+            public List<TextExport> languageLessons;
             public ProfileExport projectProfile;
             public PlatformTermsExport platformTerms;
             public List<GlossaryExport> glossary;

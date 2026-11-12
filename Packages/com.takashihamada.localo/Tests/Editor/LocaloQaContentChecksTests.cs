@@ -126,9 +126,37 @@ namespace Localo.Tests
         [TestCase(SystemLanguage.Korean, "안녕하세요。", 1)]
         [TestCase(SystemLanguage.English, "Hello，world", 1)]
         [TestCase(SystemLanguage.English, "<color=red>Hello</color>, {0}.", 0)]
+        [TestCase(SystemLanguage.English, "Y\u3000A\u3000Y\uFF01", 1)]
+        [TestCase(SystemLanguage.English, "Y A A A Y !", 0)]
+        [TestCase(SystemLanguage.Japanese, "や\u3000っ\u3000た\uFF01", 0)]
         public void Punctuation_FollowsLanguageConventions(SystemLanguage language, string text, int expectedProblems)
         {
             Assert.That(LocaloQaPunctuationCheck.FindProblems(language, text), Has.Count.EqualTo(expectedProblems));
+        }
+
+        // ---- ページ数 --------------------------------------------------------------
+
+        [TestCase("", 0)]
+        [TestCase("1行だけ", 1)]
+        [TestCase("1行目<br>2行目", 1)]
+        [TestCase("1ページ目<br><br>2ページ目<br>つづき", 2)]
+        [TestCase("1ページ目\n \n\n2ページ目<BR/><br>3ページ目", 3)]
+        [TestCase("<br><br>前後の空行は数えない<br><br>", 1)]
+        public void PageCount_CountsBlocksSeparatedByBlankLines(string text, int expectedPages)
+        {
+            Assert.That(LocaloLineBreakRules.CountPages(text), Is.EqualTo(expectedPages));
+        }
+
+        [Test]
+        public void PageCount_ReportsTranslationsWithDifferentPageCount()
+        {
+            AddRow("SAME", "ひとつめ<br>つづき<br><br>ふたつめ", "First,<br>reflowed<br>freely<br><br>Second", "");
+            AddRow("MERGED", "ひとつめ<br><br>ふたつめ", "First<br>Second", "");
+
+            var issues = LocaloQa.Run("page-count", _settings);
+
+            Assert.That(issues.Select(issue => issue.Key), Is.EqualTo(new[] { "MERGED" }));
+            Assert.That(issues[0].Severity, Is.EqualTo(LocaloQaSeverity.Warning));
         }
 
         // ---- キー ------------------------------------------------------------------

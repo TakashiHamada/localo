@@ -149,6 +149,7 @@ namespace Localo.Editor
             new LocaloQaInvalidCharacterCheck(),
             new LocaloQaMissingGlyphCheck(),
             new LocaloQaManualLineBreakCheck(),
+            new LocaloQaPageCountCheck(),
             new LocaloQaWhitespaceCheck(),
             new LocaloQaPunctuationCheck(),
             new LocaloQaPlatformTermCheck(),

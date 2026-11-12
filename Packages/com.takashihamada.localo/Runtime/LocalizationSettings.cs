@@ -67,6 +67,28 @@ namespace Localo.Runtime
         [Tooltip("対象の機種のIDです（例: switch2）。選んだ機種のボタン名などの公式表記を、AIへの指針とQAに使います。")]
         public List<string> targetPlatforms = new List<string>();
 
+        [Header("-- Language Lessons --")]
+        [Tooltip("この作品で、言語ごとに確定した書き方です（翻訳者の修正から学んだことなど）。AIは同梱の言語別ガイドより優先して読みます。")]
+        public List<LanguageData> languageLessons = new List<LanguageData>();
+
+        /// <summary>指定した言語の「学んだこと」を返す。未登録なら空文字。</summary>
+        public string GetLanguageLesson(SystemLanguage language)
+        {
+            if (languageLessons == null) return string.Empty;
+            foreach (LanguageData lesson in languageLessons)
+                if (lesson.language == language) return lesson.text ?? string.Empty;
+            return string.Empty;
+        }
+
+        /// <summary>指定した言語の「学んだこと」を保存する。空白だけの文章を渡すと、その言語の項目を削除する。</summary>
+        public void SetLanguageLesson(SystemLanguage language, string text)
+        {
+            if (languageLessons == null) languageLessons = new List<LanguageData>();
+            languageLessons.RemoveAll(lesson => lesson.language == language);
+            if (!string.IsNullOrWhiteSpace(text))
+                languageLessons.Add(new LanguageData { language = language, text = text });
+        }
+
         [Header("-- Table Columns --")]
         [Tooltip("TableのKey列の幅をピクセル単位で指定します。")]
         public int keyColumnWidth = 140;
